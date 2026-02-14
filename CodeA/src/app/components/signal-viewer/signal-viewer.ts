@@ -159,6 +159,9 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
       console.log('=== FILE LOADED SUCCESSFULLY ===');
       console.log('Channels:', this.channels);
       console.log('Selected channels:', this.selectedChannels);
+
+      console.log(this.hasSelectedChannels());
+
       
     } catch (error) {
       console.error('Error parsing file:', error);
