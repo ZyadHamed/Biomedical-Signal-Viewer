@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-
+import { ChangeDetectorRef } from '@angular/core';
 declare const Plotly: any;
 
 interface SignalData {
@@ -17,6 +17,7 @@ interface SignalData {
   styleUrls: ['./signal-viewer.css']
 })
 export class SignalViewerComponent implements OnInit, OnDestroy {
+  
   // Workflow state
   step: number = 1;
   signalType: string = '';
@@ -48,7 +49,7 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
     '#2980b9', '#8e44ad'
   ];
 
-  constructor() { }
+  constructor(private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void { }
 
@@ -161,7 +162,7 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
       console.log('Selected channels:', this.selectedChannels);
 
       console.log(this.hasSelectedChannels());
-
+      this.cdr.detectChanges();
       
     } catch (error) {
       console.error('Error parsing file:', error);
