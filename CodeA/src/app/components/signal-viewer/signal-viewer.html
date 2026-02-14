@@ -1,22 +1,61 @@
+<!-- Professional Header -->
+<div class="app-header">
+  <div class="header-content">
+    <div class="header-logo">
+      <!-- Signal Wave Icon -->
+      <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+        <path d="M3 12h3l2-8 4 16 2-8h3"/>
+        <circle cx="18" cy="12" r="2" fill="white"/>
+      </svg>
+    </div>
+    <div>
+      <h1 class="header-title">Signal Viewer</h1>
+      <p class="header-subtitle">ECG & EEG Biomedical Signal Analysis</p>
+    </div>
+  </div>
+</div>
+
 <div class="container">
   
   <!-- STEP 1: Choose Signal Type -->
   @if (step === 1) {
   <div class="step-container">
     <h2 class="main-title">Select Signal Type</h2>
-    <p class="subtitle">Choose the type of signal you want to analyze</p>
+    <p class="subtitle">Choose the type of biomedical signal you want to analyze</p>
     
     <div class="signal-type-grid">
       <div class="signal-type-card" (click)="selectSignalType('ecg')">
-        <div class="card-icon">❤️</div>
+        <div class="card-icon">
+          <!-- Professional PQRST ECG Waveform -->
+          <svg width="90" height="90" viewBox="0 0 100 60" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <!-- Baseline and PQRST wave -->
+            <path d="M 5,30 L 15,30 L 18,28 L 21,30 L 25,30 L 28,15 L 31,45 L 34,25 L 37,32 L 42,30 L 50,30 L 53,28 L 56,30 L 60,30 L 63,15 L 66,45 L 69,25 L 72,32 L 77,30 L 95,30"/>
+            <!-- P Q R S T labels would go here if needed -->
+          </svg>
+        </div>
         <h3>ECG Analysis</h3>
-        <p>Electrocardiogram Signals</p>
+        <p>Electrocardiogram • Heart Signals</p>
       </div>
       
       <div class="signal-type-card" (click)="selectSignalType('eeg')">
-        <div class="card-icon">🧠</div>
+        <div class="card-icon">
+          <!-- Professional Brain Icon -->
+          <svg width="90" height="90" viewBox="0 0 100 100" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <!-- Brain outline -->
+            <path d="M 30,25 C 25,20 20,25 20,30 C 20,35 18,40 20,45 C 18,50 20,55 25,58 C 25,65 30,70 35,72 L 50,75 L 65,72 C 70,70 75,65 75,58 C 80,55 82,50 80,45 C 82,40 80,35 80,30 C 80,25 75,20 70,25"/>
+            <!-- Brain folds/gyri -->
+            <path d="M 35,30 C 40,28 45,32 45,35"/>
+            <path d="M 55,35 C 55,32 60,28 65,30"/>
+            <path d="M 32,45 C 37,43 40,47 42,50"/>
+            <path d="M 58,50 C 60,47 63,43 68,45"/>
+            <path d="M 38,60 C 42,58 45,60 48,62"/>
+            <path d="M 52,62 C 55,60 58,58 62,60"/>
+            <!-- Cerebral division -->
+            <path d="M 50,25 L 50,72"/>
+          </svg>
+        </div>
         <h3>EEG Signals</h3>
-        <p>Electroencephalogram Data</p>
+        <p>Electroencephalogram • Brain Activity</p>
       </div>
     </div>
   </div>
@@ -28,19 +67,32 @@
     <button class="back-btn" (click)="goBack()">← Back</button>
     
     <h2 class="main-title">Select Channel Mode</h2>
-    <p class="subtitle">{{ signalType.toUpperCase() }} - Choose single or multi-channel display</p>
+    <p class="subtitle">{{ signalType.toUpperCase() }} Analysis • Choose your display mode</p>
     
     <div class="channel-mode-grid">
       <div class="channel-mode-card" (click)="selectChannelMode('single')">
-        <div class="mode-icon">📊</div>
+        <div class="mode-icon">
+          <!-- Single Channel Icon -->
+          <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#4a90e2" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <path d="M3 9h18M3 15h18"/>
+            <path d="M9 3v18"/>
+          </svg>
+        </div>
         <h3>Single Channel</h3>
-        <p>Display one channel at a time</p>
+        <p>View one channel at a time</p>
       </div>
       
       <div class="channel-mode-card" (click)="selectChannelMode('multi')">
-        <div class="mode-icon">📈</div>
+        <div class="mode-icon">
+          <!-- Multi Channel Icon -->
+          <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#4a90e2" stroke-width="2">
+            <path d="M3 3h18v6H3zM3 10h18v4H3zM3 15h18v6H3z"/>
+            <path d="M3 12h18"/>
+          </svg>
+        </div>
         <h3>Multi-Channel</h3>
-        <p>Display multiple channels vertically stacked</p>
+        <p>Vertically stacked channels</p>
       </div>
     </div>
   </div>
@@ -49,11 +101,11 @@
   <!-- STEP 3: Upload and View -->
   @if (step === 3) {
   <div>
-    <button class="back-btn" (click)="goBack()">← Back</button>
+    <button class="back-btn" (click)="goBack()">← Back to Mode Selection</button>
     
     <div class="text-center mb-4">
       <h2 class="main-title">{{ signalType.toUpperCase() }} Signal Viewer</h2>
-      <p class="subtitle">{{ channelMode === 'single' ? 'Single Channel' : 'Multi-Channel' }} Mode</p>
+      <p class="subtitle">{{ channelMode === 'single' ? 'Single Channel' : 'Multi-Channel' }} Display Mode</p>
     </div>
 
     <!-- File Upload -->
@@ -66,7 +118,7 @@
           (change)="onFileSelect($event)"
           accept=".json"
           id="fileInput">
-        <small class="text-muted">Select a converted .json file</small>
+        <small class="text-muted">Select a converted JSON file from your ECG/EEG data</small>
       </div>
     </div>
 
@@ -75,7 +127,7 @@
     <div>
       <!-- Channel Selection -->
       <div class="channel-selection-panel">
-        <h5 class="section-title">Select Channels to Display:</h5>
+        <h5 class="section-title">Select Channels to Display</h5>
         
         <!-- Multi-Channel Mode: Checkboxes -->
         @if (channelMode === 'multi') {
@@ -117,21 +169,21 @@
             class="btn btn-danger circle-btn" 
             (click)="pause()"
             [disabled]="isPaused"
-            title="Pause">
+            title="Pause Playback">
             ⏸
           </button>
           <button 
             class="btn btn-success circle-btn" 
             (click)="resume()"
             [disabled]="!isPaused"
-            title="Resume">
+            title="Resume Playback">
             ▶
           </button>
         </div>
 
         <!-- Time Window Control -->
         <div class="time-control">
-          <label class="control-label">Time Window:</label>
+          <label class="control-label">Time Window</label>
           <div class="slider-container">
             <input 
               type="range" 
@@ -154,15 +206,15 @@
     <div class="graph-container">
       @if (channels.length === 0) {
       <div class="empty-state">
-        <p>📁 No signal loaded</p>
-        <p class="text-muted">Upload a JSON file to begin</p>
+        <p style="font-size: 1.5rem; font-weight: 600;">No Signal Loaded</p>
+        <p class="text-muted">Upload a JSON file to begin analysis</p>
       </div>
       }
       
       @if (channels.length > 0 && !hasSelectedChannels()) {
       <div class="empty-state">
-        <p>📊 Signal loaded!</p>
-        <p class="text-muted">Select channels above to display them</p>
+        <p style="font-size: 1.5rem; font-weight: 600;">Signal Loaded Successfully</p>
+        <p class="text-muted">Select channels above to display waveforms</p>
       </div>
       }
       
