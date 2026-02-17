@@ -1,6 +1,7 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef } from '@angular/core';
+import { DopplerComponent } from '../doppler/doppler';
+
 declare const Plotly: any;
 
 interface SignalData {
@@ -12,46 +13,46 @@ interface SignalData {
 @Component({
   selector: 'app-signal-viewer',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, DopplerComponent],
   templateUrl: './signal-viewer.html',
   styleUrls: ['./signal-viewer.css']
 })
 export class SignalViewerComponent implements OnInit, OnDestroy {
-  
+
   // Workflow state
   step: number = 1;
   signalType: string = '';
   channelMode: string = '';
-  
+
   // Signal data
   originalSignals: number[][] = [];
   fullSignals: number[][] = [];
   channels: string[] = [];
   originalFs: number = 500;
   displayFs: number = 500;
-  
+
   // Display settings
   currentIndex: number = 0;
   timeWindow: number = 1000;
   timeWindowSeconds: number = 2;
   isPaused: boolean = false;
-  
-  // Channel selection - START WITH ALL UNCHECKED!
+
+  // Channel selection - START WITH ALL UNCHECKED
   selectedChannels: boolean[] = [];
-  
+
   // Timer
   private timer: any = null;
-  
+
   // Colors
   private readonly COLORS = [
-    '#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', 
+    '#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6',
     '#1abc9c', '#e67e22', '#34495e', '#c0392b', '#27ae60',
     '#2980b9', '#8e44ad'
   ];
 
   constructor(private cdr: ChangeDetectorRef) {}
 
-  ngOnInit(): void { }
+  ngOnInit(): void {}
 
   ngOnDestroy(): void {
     this.stopScrolling();
@@ -59,7 +60,11 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
 
   selectSignalType(type: string): void {
     this.signalType = type;
-    this.step = 2;
+    if (type === 'doppler') {
+      this.step = 3; // doppler skips channel mode step
+    } else {
+      this.step = 2;
+    }
   }
 
   selectChannelMode(mode: string): void {
@@ -89,112 +94,87 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
     this.channels = [];
     this.selectedChannels = [];
     this.currentIndex = 0;
-    if (typeof Plotly !== 'undefined') {
+    const el = document.getElementById('signal-graph');
+    if (el && typeof Plotly !== 'undefined') {
       Plotly.purge('signal-graph');
     }
   }
 
   async onFileSelect(event: any): Promise<void> {
-  const files = event.target.files;
-  if (!files || files.length === 0) {
-    alert('Please select a file');
-    return;
-  }
-
-  const file = files[0];
-  
-  if (!file.name.toLowerCase().endsWith('.json')) {
-    alert('Please upload a .json file');
-    return;
-  }
-
-  console.log('File selected:', file.name);
-
-  const reader = new FileReader();
-
-  reader.onerror = (error) => {
-    console.error('FileReader error:', error);
-    alert('Error reading file');
-  };
-
-  reader.onload = (e: any) => {
-    console.log('FileReader onload triggered!');
-    
-    try {
-      const data: SignalData = JSON.parse(e.target.result);
-      
-      if (!data.signals || !data.channels || !data.fs) {
-        throw new Error('Invalid JSON structure');
-      }
-      
-      this.originalSignals = data.signals || [];
-      this.fullSignals = this.originalSignals.slice();
-      this.channels = data.channels || [];
-      this.originalFs = data.fs || 500;
-      this.displayFs = this.originalFs;
-      
-      console.log(`Loaded ${this.fullSignals.length} samples, ${this.channels.length} channels, ${this.originalFs} Hz`);
-      
-      // IMPORTANT: Start with ALL channels UNCHECKED (except single mode)
-      if (this.channelMode === 'single') {
-        // In single mode, select first channel by default
-        this.selectedChannels = this.channels.map((_, i) => i === 0);
-        console.log('Single mode - auto-selected first channel');
-        // Plot immediately
-        setTimeout(() => {
-          this.plotSignals();
-          this.startScrolling();
-        }, 100);
-      } else {
-        // In multi mode, start with all unchecked
-        this.selectedChannels = this.channels.map(() => false);
-        console.log('Multi mode - all channels unchecked');
-      }
-      
-      const maxSeconds = Math.min(10, this.fullSignals.length / this.displayFs);
-      this.timeWindowSeconds = Math.min(2, maxSeconds);
-      this.timeWindow = Math.round(this.timeWindowSeconds * this.displayFs);
-      
-      this.currentIndex = 0;
-      
-      console.log('=== FILE LOADED SUCCESSFULLY ===');
-      console.log('Channels:', this.channels);
-      console.log('Selected channels:', this.selectedChannels);
-
-      console.log(this.hasSelectedChannels());
-      this.cdr.detectChanges();
-      
-    } catch (error) {
-      console.error('Error parsing file:', error);
-      alert(`Error loading file: ${error}`);
-    }
-  };
-
-  console.log('Starting to read file...');
-  reader.readAsText(file);
-}
-
-  // FIXED: Much better vertical stacking with proper spacing
-  plotSignals(): void {
-    if (typeof Plotly === 'undefined') {
-    console.error('Plotly is not loaded yet! Retrying...');
-    setTimeout(() => this.plotSignals(), 100);
-    return;
-  }
-    if (!this.fullSignals.length) {
+    const files = event.target.files;
+    if (!files || files.length === 0) {
+      alert('Please select a file');
       return;
     }
 
+    const file = files[0];
+
+    if (!file.name.toLowerCase().endsWith('.json')) {
+      alert('Please upload a .json file');
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onerror = () => {
+      alert('Error reading file');
+    };
+
+    reader.onload = (e: any) => {
+      try {
+        const data: SignalData = JSON.parse(e.target.result);
+
+        if (!data.signals || !data.channels || !data.fs) {
+          throw new Error('Invalid JSON structure. Need: signals, channels, fs');
+        }
+
+        this.originalSignals = data.signals || [];
+        this.fullSignals = this.originalSignals.slice();
+        this.channels = data.channels || [];
+        this.originalFs = data.fs || 500;
+        this.displayFs = this.originalFs;
+
+        if (this.channelMode === 'single') {
+          this.selectedChannels = this.channels.map((_, i) => i === 0);
+          setTimeout(() => {
+            this.plotSignals();
+            this.startScrolling();
+          }, 100);
+        } else {
+          this.selectedChannels = this.channels.map(() => false);
+        }
+
+        const maxSeconds = Math.min(10, this.fullSignals.length / this.displayFs);
+        this.timeWindowSeconds = Math.min(2, maxSeconds);
+        this.timeWindow = Math.round(this.timeWindowSeconds * this.displayFs);
+        this.currentIndex = 0;
+
+        this.cdr.detectChanges();
+
+      } catch (error) {
+        alert(`Error loading file: ${error}`);
+      }
+    };
+
+    reader.readAsText(file);
+  }
+
+  plotSignals(): void {
+    if (typeof Plotly === 'undefined') {
+      setTimeout(() => this.plotSignals(), 100);
+      return;
+    }
+    if (!this.fullSignals.length) return;
+
     const traces: any[] = [];
-    
+
     const checked = this.selectedChannels
       .map((selected, index) => selected ? index : -1)
       .filter(index => index !== -1);
 
     if (!checked.length) {
-      if (typeof Plotly !== 'undefined') {
-        Plotly.purge('signal-graph');
-      }
+      const el = document.getElementById('signal-graph');
+      if (el && typeof Plotly !== 'undefined') Plotly.purge('signal-graph');
       return;
     }
 
@@ -203,27 +183,23 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
       this.fullSignals.length
     );
 
-    // IMPROVED: Better vertical spacing between channels
-    const CHANNEL_SPACING = 3;  // Increased spacing for clearer separation
-    
+    const CHANNEL_SPACING = 3;
+
     checked.forEach((chIdx, stackIdx) => {
       const segment = this.fullSignals
         .slice(this.currentIndex, visibleEnd)
         .map(row => row[chIdx]);
-      
-      const xTime = segment.map((_, i) => 
+
+      const xTime = segment.map((_, i) =>
         (this.currentIndex + i) / this.displayFs
       );
 
-      // FIXED: Better normalization - preserve ECG waveform shape
       const minVal = Math.min(...segment);
       const maxVal = Math.max(...segment);
       const range = maxVal - minVal || 1;
-      
-      // Normalize to 0-1 range, then offset vertically
-      // Each channel gets its own "track" separated by CHANNEL_SPACING
+
       const yData = segment.map(val => {
-        const normalized = (val - minVal) / range;  // 0 to 1
+        const normalized = (val - minVal) / range;
         return normalized + (stackIdx * CHANNEL_SPACING);
       });
 
@@ -233,11 +209,11 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
         type: 'scatter',
         mode: 'lines',
         name: this.channels[chIdx],
-        line: { 
-          color: this.COLORS[chIdx % this.COLORS.length], 
+        line: {
+          color: this.COLORS[chIdx % this.COLORS.length],
           width: 2
         },
-        hovertemplate: `${this.channels[chIdx]}<br>Time: %{x:.3f}s<br>Value: %{y:.3f}<extra></extra>`
+        hovertemplate: `${this.channels[chIdx]}<br>Time: %{x:.3f}s<extra></extra>`
       });
     });
 
@@ -249,12 +225,12 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
         text: `${this.signalType.toUpperCase()} Signal Viewer - ${checked.length} Channel(s)`,
         font: { size: 20, color: '#002b5c' }
       },
-      xaxis: { 
-        title: 'Time (seconds)', 
+      xaxis: {
+        title: 'Time (seconds)',
         range: [xStart, xEnd],
         gridcolor: '#e0e0e0'
       },
-      yaxis: { 
+      yaxis: {
         title: 'Channels (Vertically Stacked)',
         showticklabels: false,
         gridcolor: '#f0f0f0'
@@ -266,7 +242,7 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
         y: 1,
         font: { size: 12 }
       },
-      height: 300 + (checked.length * 120),  // More height per channel
+      height: 300 + (checked.length * 120),
       margin: { l: 60, r: 150, t: 80, b: 60 },
       plot_bgcolor: '#ffffff',
       paper_bgcolor: '#f8f9fa'
@@ -283,19 +259,14 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
 
   startScrolling(): void {
     this.stopScrolling();
-    
     this.timer = setInterval(() => {
       if (this.isPaused || !this.fullSignals.length) return;
-      
-      // Check if any channels are selected
       if (!this.selectedChannels.some(c => c)) return;
-      
+
       this.currentIndex++;
-      
       if (this.currentIndex + this.timeWindow >= this.fullSignals.length) {
         this.currentIndex = 0;
       }
-      
       this.plotSignals();
     }, 50);
   }
@@ -307,13 +278,8 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
     }
   }
 
-  pause(): void {
-    this.isPaused = true;
-  }
-
-  resume(): void {
-    this.isPaused = false;
-  }
+  pause(): void { this.isPaused = true; }
+  resume(): void { this.isPaused = false; }
 
   onTimeWindowChange(event: any): void {
     const seconds = parseFloat(event.target.value);
@@ -328,8 +294,7 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
     } else {
       this.selectedChannels[index] = !this.selectedChannels[index];
     }
-    
-    // If this is the first channel selected, start scrolling
+
     if (this.selectedChannels.some(c => c) && !this.timer) {
       this.plotSignals();
       this.startScrolling();
@@ -341,21 +306,17 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
   onSingleChannelChange(event: Event): void {
     const selectElement = event.target as HTMLSelectElement;
     const channelIndex = +selectElement.value;
-    
     this.selectedChannels = this.selectedChannels.map(() => false);
     this.selectedChannels[channelIndex] = true;
-    
     this.plotSignals();
-    if (!this.timer) {
-      this.startScrolling();
-    }
+    if (!this.timer) this.startScrolling();
   }
 
   getMaxTimeWindow(): number {
     if (!this.fullSignals.length) return 10;
     return Math.min(10, this.fullSignals.length / this.displayFs);
   }
-// Helper method to check if any channels are selected
+
   hasSelectedChannels(): boolean {
     return this.selectedChannels.some(c => c);
   }

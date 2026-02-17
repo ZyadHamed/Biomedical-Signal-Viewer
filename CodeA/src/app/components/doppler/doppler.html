@@ -1,0 +1,202 @@
+<div class="container">
+
+  <!-- STEP 1: Choose Mode -->
+  @if (step === 1) {
+  <div class="step-container">
+    <h2 class="main-title">Vehicle-Passing Doppler Effect</h2>
+    <p class="subtitle">Choose whether to generate or analyze Doppler sounds</p>
+
+    <div class="doppler-mode-grid">
+
+      <div class="doppler-mode-card" (click)="selectMode('generate')">
+        <div class="card-icon">
+          <svg width="90" height="90" viewBox="0 0 100 100" fill="none" stroke="white" stroke-width="3" stroke-linecap="round">
+            <circle cx="50" cy="50" r="8" fill="white"/>
+            <circle cx="50" cy="50" r="18" opacity="0.7"/>
+            <circle cx="50" cy="50" r="28" opacity="0.5"/>
+            <circle cx="50" cy="50" r="38" opacity="0.3"/>
+          </svg>
+        </div>
+        <h3>Generate Sound</h3>
+        <p>Synthesize Doppler effect from velocity &amp; frequency</p>
+      </div>
+
+      <div class="doppler-mode-card" (click)="selectMode('analyze')">
+        <div class="card-icon">
+          <svg width="90" height="90" viewBox="0 0 100 100" fill="none" stroke="white" stroke-width="3">
+            <rect x="10" y="10" width="80" height="75" rx="5"/>
+            <path d="M 20,80 L 30,60 L 40,70 L 50,40 L 60,50 L 70,30 L 80,20"/>
+            <circle cx="50" cy="40" r="5" fill="white"/>
+          </svg>
+        </div>
+        <h3>Estimate Velocity &amp; Frequency</h3>
+        <p>Analyze real vehicle-passing audio recordings</p>
+      </div>
+
+    </div>
+  </div>
+  }
+
+  <!-- STEP 2: Generate Mode -->
+  @if (step === 2 && mode === 'generate') {
+  <div>
+    <button class="back-btn" (click)="goBack()">&#8592; Back</button>
+
+    <div class="text-center mb-4">
+      <h2 class="main-title">Generate Doppler Sound</h2>
+      <p class="subtitle">Configure parameters to synthesize vehicle-passing sound</p>
+    </div>
+
+    <div class="control-panel">
+      <h5 class="section-title">Sound Generation Parameters</h5>
+
+      <div class="param-grid">
+        <div class="param-control">
+          <label class="control-label">Horn Frequency (Hz):</label>
+          <input type="number" class="param-input" [(ngModel)]="frequency" min="100" max="2000" step="10">
+          <small class="text-muted">Typical car horn: 400–500 Hz</small>
+        </div>
+
+        <div class="param-control">
+          <label class="control-label">Vehicle Velocity (m/s):</label>
+          <input type="number" class="param-input" [(ngModel)]="velocity" min="5" max="50" step="1">
+          <small class="text-muted">20 m/s &asymp; 72 km/h</small>
+        </div>
+
+        <div class="param-control">
+          <label class="control-label">Duration (seconds):</label>
+          <input type="number" class="param-input" [(ngModel)]="duration" min="2" max="10" step="0.5">
+          <small class="text-muted">Total audio length</small>
+        </div>
+      </div>
+
+      <div class="sampling-rate-control">
+        <label class="control-label">Sampling Rate: <span class="time-value">{{ samplingRate }} Hz</span></label>
+        <input type="range" class="time-slider" [(ngModel)]="samplingRate" min="8000" max="48000" step="1000">
+        <small class="text-muted">Higher = better quality, larger file</small>
+      </div>
+
+      <div class="text-center mt-4">
+        <button class="btn-generate" (click)="generateDopplerSound()" [disabled]="isGenerating">
+          @if (isGenerating) { <span>Generating...</span> }
+          @else { <span>Generate Doppler Sound</span> }
+        </button>
+      </div>
+    </div>
+
+    @if (showResults && generatedAudioUrl) {
+    <div>
+      <div class="audio-panel">
+        <h5 class="section-title">Generated Doppler Sound</h5>
+        <audio [src]="generatedAudioUrl" controls class="audio-player"></audio>
+      </div>
+
+      <div class="results-panel">
+        <h5 class="section-title">Doppler Effect Analysis</h5>
+        <div class="results-grid">
+          <div class="result-card">
+            <div class="result-label">Max Frequency</div>
+            <div class="result-value">{{ maxFrequency.toFixed(2) }} Hz</div>
+          </div>
+          <div class="result-card">
+            <div class="result-label">Min Frequency</div>
+            <div class="result-value">{{ minFrequency.toFixed(2) }} Hz</div>
+          </div>
+          <div class="result-card">
+            <div class="result-label">Frequency Shift</div>
+            <div class="result-value">{{ (maxFrequency - minFrequency).toFixed(2) }} Hz</div>
+          </div>
+          <div class="result-card">
+            <div class="result-label">Shift Ratio</div>
+            <div class="result-value">{{ shiftRatio.toFixed(3) }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="charts-container">
+        <div class="chart-wrapper">
+          <canvas id="amplitudeChart"></canvas>
+        </div>
+        <div class="chart-wrapper">
+          <canvas id="frequencyChart"></canvas>
+        </div>
+      </div>
+    </div>
+    }
+  </div>
+  }
+
+  <!-- STEP 2: Analyze Mode -->
+  @if (step === 2 && mode === 'analyze') {
+  <div>
+    <button class="back-btn" (click)="goBack()">&#8592; Back</button>
+
+    <div class="text-center mb-4">
+      <h2 class="main-title">Estimate Velocity &amp; Frequency</h2>
+      <p class="subtitle">Upload real vehicle-passing audio to analyze Doppler shift</p>
+    </div>
+
+    <div class="control-panel">
+      <h5 class="section-title">Upload Vehicle-Passing Audio</h5>
+
+      <div class="upload-section">
+        <label class="control-label">Select Audio File:</label>
+        <input type="file" class="file-input" (change)="onFileSelect($event)" accept="audio/*">
+        <small class="text-muted">Supported formats: .wav, .mp3, .m4a, .ogg</small>
+      </div>
+
+      @if (uploadedAudioUrl) {
+      <div class="audio-panel mt-4">
+        <h6 class="section-title">Preview Uploaded Audio</h6>
+        <audio [src]="uploadedAudioUrl" controls class="audio-player"></audio>
+      </div>
+      }
+
+      <div class="text-center mt-4">
+        <button class="btn-analyze" (click)="analyzeAudio()" [disabled]="!uploadedFile || isAnalyzing">
+          @if (isAnalyzing) { <span>Analyzing...</span> }
+          @else { <span>Analyze Audio</span> }
+        </button>
+      </div>
+    </div>
+
+    @if (showResults) {
+    <div class="results-panel">
+      <h5 class="section-title">Estimated Parameters</h5>
+
+      <div class="results-grid">
+        <div class="result-card highlight">
+          <div class="result-label">Estimated Velocity</div>
+          <div class="result-value">{{ estimatedVelocity.toFixed(2) }} m/s</div>
+          <small class="text-muted">&asymp; {{ (estimatedVelocity * 3.6).toFixed(1) }} km/h</small>
+        </div>
+        <div class="result-card highlight">
+          <div class="result-label">Base Frequency</div>
+          <div class="result-value">{{ estimatedFrequency.toFixed(2) }} Hz</div>
+          <small class="text-muted">Horn/siren frequency</small>
+        </div>
+        <div class="result-card">
+          <div class="result-label">Max Frequency</div>
+          <div class="result-value">{{ detectedMaxFreq.toFixed(2) }} Hz</div>
+        </div>
+        <div class="result-card">
+          <div class="result-label">Min Frequency</div>
+          <div class="result-value">{{ detectedMinFreq.toFixed(2) }} Hz</div>
+        </div>
+        <div class="result-card">
+          <div class="result-label">Confidence</div>
+          <div class="result-value">{{ confidenceScore.toFixed(1) }}%</div>
+        </div>
+      </div>
+
+      <div class="info-box">
+        <strong>Algorithm Info:</strong>
+        <p>Uses Short-Time Fourier Transform (STFT) and autocorrelation to detect frequency variations over time,
+        then applies the Doppler equation: v = c &times; (f_max &minus; f_min) / (f_max + f_min)</p>
+      </div>
+    </div>
+    }
+  </div>
+  }
+
+</div>
