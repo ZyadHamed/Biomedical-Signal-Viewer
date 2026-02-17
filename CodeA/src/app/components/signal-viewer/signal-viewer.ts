@@ -166,6 +166,7 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
         this.timeWindow = Math.round(this.timeWindowSeconds * this.displayFs);
         this.currentIndex = 0;
 
+        this.cdr.detectChanges()
       } catch (error) {
         alert(`Error loading file: ${error}`);
       }
