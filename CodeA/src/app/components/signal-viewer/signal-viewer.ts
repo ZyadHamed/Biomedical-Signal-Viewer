@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { DopplerComponent } from '../doppler/doppler';
-
+import { FormsModule } from '@angular/forms';
+import { ChangeDetectorRef } from '@angular/core';
 declare const Plotly: any;
 
 interface SignalData {
@@ -166,6 +166,20 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
     }
     if (!this.fullSignals.length) return;
 
+    // Route to the correct drawing function based on selected mode
+    if (this.displayMode === 'reoccurrence') {
+      this.plotReoccurrenceMap();
+      return;
+    }
+    if (this.displayMode === 'polar') {
+      this.plotPolarGraph();
+      return;
+    }
+    if (this.displayMode === 'xor') {
+      this.plotXorGraph();
+      return;
+    }
+    // --- Original Time-Domain Plotting Logic ---
     const traces: any[] = [];
 
     const checked = this.selectedChannels
@@ -248,15 +262,175 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
       paper_bgcolor: '#f8f9fa'
     };
 
-    const config = {
-      responsive: true,
-      displayModeBar: true,
-      displaylogo: false
-    };
-
-    Plotly.react('signal-graph', traces, layout, config);
+    Plotly.react('signal-graph', traces, layout, { responsive: true, displayModeBar: true, displaylogo: false });
   }
 
+  plotReoccurrenceMap(): void {
+    const chX = this.reoccurrenceChX;
+    const chY = this.reoccurrenceChY;
+
+    if (!this.channels.length || chX === undefined || chY === undefined) return;
+
+    const visibleEnd = Math.min(this.currentIndex + this.timeWindow, this.fullSignals.length);
+
+    const xData = this.fullSignals.slice(0, visibleEnd).map(row => row[chX]);
+    const yData = this.fullSignals.slice(0, visibleEnd).map(row => row[chY]);
+
+    // إنشاء مصفوفة تعبر عن الزمن عشان نلون بيها النقط (الأقدم لون والأحدث لون)
+    const timeIndices = xData.map((_, i) => i);
+
+    const trace = {
+      x: xData,
+      y: yData,
+      type: 'scatter',
+      mode: 'markers',
+      name: `${this.channels[chX]} vs ${this.channels[chY]}`,
+      marker: {
+        color: timeIndices, // اللون يعتمد على الزمن (Intensity map)
+        colorscale: this.reoccurrenceColorMap, // تطبيق الـ Color map اللي المستخدم اختاره
+        showscale: true, // إظهار مسطرة الألوان جنب الرسمة
+        size: 5,
+        opacity: 0.7
+      },
+      hovertemplate: `X (${this.channels[chX]}): %{x:.3f}<br>Y (${this.channels[chY]}): %{y:.3f}<extra></extra>`
+    };
+
+    const layout = {
+      title: { text: `Reoccurrence Map: ${this.channels[chX]} vs ${this.channels[chY]}`, font: { size: 20, color: '#1e3c72' } },
+      xaxis: { title: `${this.channels[chX]} Amplitude`, gridcolor: '#e0e0e0' },
+      yaxis: { title: `${this.channels[chY]} Amplitude`, gridcolor: '#f0f0f0' },
+      showlegend: false,
+      height: 550,
+      margin: { l: 80, r: 80, t: 80, b: 80 },
+      plot_bgcolor: '#ffffff',
+      paper_bgcolor: '#f8f9fa',
+      hovermode: 'closest'
+    };
+
+    Plotly.react('signal-graph', [trace], layout, { responsive: true, displayModeBar: true, displaylogo: false });
+  }
+  // NEW: Function to plot the Polar Graph
+  plotPolarGraph(): void {
+    const checked = this.selectedChannels
+      .map((selected, index) => selected ? index : -1)
+      .filter(index => index !== -1);
+
+    if (!checked.length) {
+      if (typeof Plotly !== 'undefined') Plotly.purge('signal-graph');
+      return;
+    }
+
+    // تحديد نقطة البداية بناءً على المود (ثابت ولا تراكمي)
+    const isCumulative = this.polarMode === 'cumulative';
+    const startIndex = isCumulative ? 0 : this.currentIndex;
+    const visibleEnd = Math.min(this.currentIndex + this.timeWindow, this.fullSignals.length);
+
+    const traces: any[] = [];
+
+    checked.forEach((chIdx) => {
+      const segment = this.fullSignals.slice(startIndex, visibleEnd).map(row => row[chIdx]);
+
+      const theta = segment.map((_, i) => {
+        // حساب الزمن الفعلي للنقطة
+        const actualIndex = isCumulative ? i : (this.currentIndex + i);
+        const timeInSeconds = actualIndex / this.displayFs;
+        // تحويل الزمن لزاوية بتلف 360 درجة كل Time Window
+        return ((timeInSeconds % this.timeWindowSeconds) / this.timeWindowSeconds) * 360;
+      });
+
+      traces.push({
+        type: 'scatterpolar',
+        mode: 'lines',
+        r: segment,      // r = magnitude
+        theta: theta,    // theta = time
+        name: this.channels[chIdx],
+        line: { color: this.COLORS[chIdx % this.COLORS.length], width: 2 },
+        hovertemplate: `${this.channels[chIdx]}<br>Time: %{theta:.1f}°<br>Amp: %{r:.3f}<extra></extra>`
+      });
+    });
+
+    const layout = {
+      title: { text: `Polar Graph (${isCumulative ? 'Cumulative' : 'Fixed Time'})`, font: { size: 20, color: '#1e3c72' } },
+      polar: {
+        radialaxis: { visible: true, gridcolor: '#e0e0e0' },
+        angularaxis: { direction: 'clockwise', gridcolor: '#e0e0e0' }
+      },
+      showlegend: true,
+      height: 550,
+      margin: { l: 80, r: 80, t: 80, b: 80 },
+      plot_bgcolor: '#ffffff',
+      paper_bgcolor: 'transparent',
+    };
+
+    Plotly.react('signal-graph', traces, layout, { responsive: true, displayModeBar: true, displaylogo: false });
+  }
+  // NEW: Function to plot XOR Graph (Chunk by Chunk)
+  plotXorGraph(): void {
+    const checked = this.selectedChannels
+      .map((selected, index) => selected ? index : -1)
+      .filter(index => index !== -1);
+
+    if (!checked.length) {
+      if (typeof Plotly !== 'undefined') Plotly.purge('signal-graph');
+      return;
+    }
+
+    const chunkSize = this.timeWindow; // حجم الـ Chunk هو الـ Window
+    const visibleEnd = Math.min(this.currentIndex + chunkSize, this.fullSignals.length);
+    const scale = 1000; // عشان نحافظ على دقة الكسور أثناء الـ XOR
+
+    const traces: any[] = [];
+
+    checked.forEach((chIdx) => {
+      // مصفوفة هنخزن فيها ناتج الـ XOR النهائي طولها نفس طول الـ Window
+      const xorResult = new Array(chunkSize).fill(0);
+      let isFirstChunk = true;
+
+      // بنمشي على الإشارة ونقسمها لـ Chunks
+      for (let start = 0; start < visibleEnd; start += chunkSize) {
+        const end = Math.min(start + chunkSize, visibleEnd);
+        const chunk = this.fullSignals.slice(start, end).map(row => row[chIdx]);
+
+        for (let i = 0; i < chunk.length; i++) {
+          if (isFirstChunk) {
+            xorResult[i] = chunk[i]; // أول Chunk بينزل زي ما هو
+          } else {
+            // بنعمل XOR للـ Chunk الجديد مع الناتج المتراكم
+            const intA = Math.round(xorResult[i] * scale);
+            const intB = Math.round(chunk[i] * scale);
+            xorResult[i] = (intA ^ intB) / scale;
+          }
+        }
+        isFirstChunk = false;
+      }
+
+      // تحويل الـ index لزمن عشان محور X
+      const timeAxis = xorResult.map((_, i) => i / this.displayFs);
+
+      traces.push({
+        x: timeAxis,
+        y: xorResult,
+        type: 'scatter',
+        mode: 'lines',
+        name: this.channels[chIdx],
+        line: { color: this.COLORS[chIdx % this.COLORS.length], width: 2 },
+        hovertemplate: `${this.channels[chIdx]}<br>Time: %{x:.3f}s<br>XOR Amp: %{y:.3f}<extra></extra>`
+      });
+    });
+
+    const layout = {
+      title: { text: `XOR Cumulative Graph (Chunk = ${this.timeWindowSeconds}s)`, font: { size: 20, color: '#1e3c72' } },
+      xaxis: { title: 'Time (seconds)', gridcolor: '#e0e0e0' },
+      yaxis: { title: 'XOR Amplitude', gridcolor: '#e0e0e0' },
+      showlegend: true,
+      height: 550,
+      margin: { l: 80, r: 80, t: 80, b: 80 },
+      plot_bgcolor: '#ffffff',
+      paper_bgcolor: 'transparent',
+    };
+
+    Plotly.react('signal-graph', traces, layout, { responsive: true, displayModeBar: true, displaylogo: false });
+  }
   startScrolling(): void {
     this.stopScrolling();
     this.timer = setInterval(() => {
@@ -270,7 +444,6 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
       this.plotSignals();
     }, 50);
   }
-
   stopScrolling(): void {
     if (this.timer) {
       clearInterval(this.timer);
