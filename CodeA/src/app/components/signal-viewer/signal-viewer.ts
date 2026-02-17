@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ChangeDetectorRef } from '@angular/core';
@@ -13,30 +13,16 @@ interface SignalData {
 @Component({
   selector: 'app-signal-viewer',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, DopplerComponent],
   templateUrl: './signal-viewer.html',
   styleUrls: ['./signal-viewer.css']
 })
 export class SignalViewerComponent implements OnInit, OnDestroy {
-  
+
   // Workflow state
   step: number = 1;
   signalType: string = '';
   channelMode: string = '';
-
-  // NEW: Display Mode State (Time Domain vs Reoccurrence,polar and xor Maps)
-  displayMode: 'time' | 'reoccurrence' | 'polar' | 'xor' = 'time';
-
-  // NEW: Polar Plot Controls
-  polarMode: 'fixed' | 'cumulative' = 'fixed';
-
-  // NEW: Reoccurrence Color Map Controls
-  reoccurrenceColorMap: string = 'Viridis';
-
-  colorMapOptions: string[] = ['Viridis', 'Plasma', 'Inferno', 'Jet', 'Hot', 'Blues', 'Electric'];
-  // NEW: Reoccurrence Map selections
-  reoccurrenceChX: number = 0;
-  reoccurrenceChY: number = 0;
 
   // Signal data
   originalSignals: number[][] = [];
@@ -51,10 +37,7 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
   timeWindowSeconds: number = 2;
   isPaused: boolean = false;
 
-  // Playback speed multiplier
-  playbackSpeed: number = 1;
-
-  // Channel selection
+  // Channel selection - START WITH ALL UNCHECKED
   selectedChannels: boolean[] = [];
 
   // Timer
@@ -69,7 +52,7 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
 
   constructor(private cdr: ChangeDetectorRef) {}
 
-  ngOnInit(): void { }
+  ngOnInit(): void {}
 
   ngOnDestroy(): void {
     this.stopScrolling();
@@ -77,7 +60,11 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
 
   selectSignalType(type: string): void {
     this.signalType = type;
-    this.step = 2;
+    if (type === 'doppler') {
+      this.step = 3; // doppler skips channel mode step
+    } else {
+      this.step = 2;
+    }
   }
 
   selectChannelMode(mode: string): void {
@@ -107,8 +94,8 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
     this.channels = [];
     this.selectedChannels = [];
     this.currentIndex = 0;
-    this.displayMode = 'time'; // Reset display mode
-    if (typeof Plotly !== 'undefined') {
+    const el = document.getElementById('signal-graph');
+    if (el && typeof Plotly !== 'undefined') {
       Plotly.purge('signal-graph');
     }
   }
@@ -129,7 +116,7 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
 
     const reader = new FileReader();
 
-    reader.onerror = (error) => {
+    reader.onerror = () => {
       alert('Error reading file');
     };
 
@@ -138,7 +125,7 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
         const data: SignalData = JSON.parse(e.target.result);
 
         if (!data.signals || !data.channels || !data.fs) {
-          throw new Error('Invalid JSON structure');
+          throw new Error('Invalid JSON structure. Need: signals, channels, fs');
         }
 
         this.originalSignals = data.signals || [];
@@ -146,10 +133,6 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
         this.channels = data.channels || [];
         this.originalFs = data.fs || 500;
         this.displayFs = this.originalFs;
-
-        // NEW: Set default channels for Reoccurrence map
-        this.reoccurrenceChX = 0;
-        this.reoccurrenceChY = this.channels.length > 1 ? 1 : 0;
 
         if (this.channelMode === 'single') {
           this.selectedChannels = this.channels.map((_, i) => i === 0);
@@ -166,31 +149,14 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
         this.timeWindow = Math.round(this.timeWindowSeconds * this.displayFs);
         this.currentIndex = 0;
 
-        this.cdr.detectChanges()
+        this.cdr.detectChanges();
+
       } catch (error) {
         alert(`Error loading file: ${error}`);
       }
     };
 
     reader.readAsText(file);
-  }
-
-  // NEW: Method to toggle between modes
-  setDisplayMode(mode: 'time' | 'reoccurrence' | 'polar' | 'xor'): void {
-    this.displayMode = mode;
-    this.plotSignals();
-    if (!this.timer) {
-      this.startScrolling();
-    }
-  }
-
-  // NEW: Method to handle X and Y channel selection for Reoccurrence Map
-  onReoccurrenceChannelChange(axis: 'x' | 'y', event: Event): void {
-    const selectElement = event.target as HTMLSelectElement;
-    const index = +selectElement.value;
-    if (axis === 'x') this.reoccurrenceChX = index;
-    if (axis === 'y') this.reoccurrenceChY = index;
-    this.plotSignals();
   }
 
   plotSignals(): void {
@@ -215,12 +181,14 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
     }
     // --- Original Time-Domain Plotting Logic ---
     const traces: any[] = [];
+
     const checked = this.selectedChannels
       .map((selected, index) => selected ? index : -1)
       .filter(index => index !== -1);
 
     if (!checked.length) {
-      if (typeof Plotly !== 'undefined') Plotly.purge('signal-graph');
+      const el = document.getElementById('signal-graph');
+      if (el && typeof Plotly !== 'undefined') Plotly.purge('signal-graph');
       return;
     }
 
@@ -255,8 +223,11 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
         type: 'scatter',
         mode: 'lines',
         name: this.channels[chIdx],
-        line: { color: this.COLORS[chIdx % this.COLORS.length], width: 2 },
-        hovertemplate: `${this.channels[chIdx]}<br>Time: %{x:.3f}s<br>Value: %{y:.3f}<extra></extra>`
+        line: {
+          color: this.COLORS[chIdx % this.COLORS.length],
+          width: 2
+        },
+        hovertemplate: `${this.channels[chIdx]}<br>Time: %{x:.3f}s<extra></extra>`
       });
     });
 
@@ -264,11 +235,27 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
     const xEnd = (visibleEnd - 1) / this.displayFs;
 
     const layout = {
-      title: { text: `${this.signalType.toUpperCase()} Signal Viewer - ${checked.length} Channel(s)`, font: { size: 20, color: '#002b5c' } },
-      xaxis: { title: 'Time (seconds)', range: [xStart, xEnd], gridcolor: '#e0e0e0' },
-      yaxis: { title: 'Channels (Vertically Stacked)', showticklabels: false, gridcolor: '#f0f0f0' },
+      title: {
+        text: `${this.signalType.toUpperCase()} Signal Viewer - ${checked.length} Channel(s)`,
+        font: { size: 20, color: '#002b5c' }
+      },
+      xaxis: {
+        title: 'Time (seconds)',
+        range: [xStart, xEnd],
+        gridcolor: '#e0e0e0'
+      },
+      yaxis: {
+        title: 'Channels (Vertically Stacked)',
+        showticklabels: false,
+        gridcolor: '#f0f0f0'
+      },
       showlegend: true,
-      legend: { orientation: 'v', x: 1.02, y: 1, font: { size: 12 } },
+      legend: {
+        orientation: 'v',
+        x: 1.02,
+        y: 1,
+        font: { size: 12 }
+      },
       height: 300 + (checked.length * 120),
       margin: { l: 60, r: 150, t: 80, b: 60 },
       plot_bgcolor: '#ffffff',
@@ -446,19 +433,14 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
   }
   startScrolling(): void {
     this.stopScrolling();
-
     this.timer = setInterval(() => {
       if (this.isPaused || !this.fullSignals.length) return;
+      if (!this.selectedChannels.some(c => c)) return;
 
-      if (this.displayMode === 'time' && !this.selectedChannels.some(c => c)) return;
-
-      // الدالة دي بتتحكم في السرعة عن طريق القفز في الإشارة
-      this.currentIndex += Math.round(10 * this.playbackSpeed);
-
+      this.currentIndex++;
       if (this.currentIndex + this.timeWindow >= this.fullSignals.length) {
         this.currentIndex = 0;
       }
-
       this.plotSignals();
     }, 50);
   }
@@ -471,11 +453,7 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
 
   pause(): void { this.isPaused = true; }
   resume(): void { this.isPaused = false; }
-  // Update playback speed
-  setPlaybackSpeed(event: Event): void {
-    const selectElement = event.target as HTMLSelectElement;
-    this.playbackSpeed = parseFloat(selectElement.value);
-  }
+
   onTimeWindowChange(event: any): void {
     const seconds = parseFloat(event.target.value);
     this.timeWindowSeconds = seconds;
@@ -501,14 +479,10 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
   onSingleChannelChange(event: Event): void {
     const selectElement = event.target as HTMLSelectElement;
     const channelIndex = +selectElement.value;
-
     this.selectedChannels = this.selectedChannels.map(() => false);
     this.selectedChannels[channelIndex] = true;
-
     this.plotSignals();
-    if (!this.timer) {
-      this.startScrolling();
-    }
+    if (!this.timer) this.startScrolling();
   }
 
   getMaxTimeWindow(): number {
