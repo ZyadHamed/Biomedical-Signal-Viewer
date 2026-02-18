@@ -1014,9 +1014,9 @@ body {
 /* ADD THIS TO YOUR signal-viewer.css FILE */
 
 /* 3-Column Grid for Signal Type Selection */
-.signal-type-grid-three {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+.signal-type-grid-four {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr);
   gap: 30px;
   max-width: 1200px;
   margin: 0 auto;
@@ -1024,14 +1024,14 @@ body {
 
 /* Responsive - Stack to 1 column on mobile */
 @media (max-width: 1024px) {
-  .signal-type-grid-three {
+  .signal-type-grid-four {
     grid-template-columns: 1fr;
     max-width: 400px;
   }
 }
 
 @media (min-width: 1025px) and (max-width: 1400px) {
-  .signal-type-grid-three {
+  .signal-type-grid-four {
     grid-template-columns: repeat(2, 1fr);
     max-width: 800px;
   }

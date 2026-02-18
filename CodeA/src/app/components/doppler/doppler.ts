@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -50,7 +50,7 @@ export class DopplerComponent implements OnInit, OnDestroy {
   private readonly SPEED_OF_SOUND = 343;
   private readonly PERPENDICULAR_DISTANCE = 5;
 
-  constructor() {}
+  constructor(private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {}
 
@@ -384,12 +384,14 @@ export class DopplerComponent implements OnInit, OnDestroy {
       this.detectedMinFreq = result.minFreq;
       this.confidenceScore = result.confidence;
       this.showResults = true;
-
       audioContext.close();
+      console.log("Audio Analyed!!");
+      
     } catch (error) {
       alert('Error analyzing audio: ' + error);
     } finally {
       this.isAnalyzing = false;
+      this.cdr.detectChanges();
     }
   }
 
