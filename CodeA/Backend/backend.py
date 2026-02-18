@@ -1,7 +1,7 @@
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-
+from fastapi.middleware.cors import CORSMiddleware
 from MicrobiomeService import GetDiarrheaPatientProfile, GetHydrocephalusPatientProfile, GetDiabetesPatientProfile
 
 import os
@@ -10,6 +10,15 @@ from pydantic import BaseModel
 
 
 app = FastAPI()
+origins = ["*"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 ALLOWED_Dataset_Extensions_For_Microbiome = {'.csv'}
@@ -52,7 +61,7 @@ async def create_upload_file(diseaseName: str, file: UploadFile):
             status_code=500
             )
 
-@app.post("/getmicrobiomepatientdata")
+@app.get("/getmicrobiomepatientdata")
 async def GetMicroBiomePatientData(diseaseName: str, participantIndex: int):
     responseDTO = {}
     if(diseaseName == "Diarrhea"):
@@ -77,7 +86,7 @@ async def GetMicroBiomePatientData(diseaseName: str, participantIndex: int):
             "DI": DI,
             "HasDisease": actualPrediction
         }
-
+    
     elif(diseaseName == "Diabetes"):
         BadBacteriaSum, GoodBacteriaSum, DI, actualPrediction, participantID, BacteriaProfile = GetDiabetesPatientProfile("microbiomeDataDiabetes.csv", participantIndex)
         responseDTO = {
@@ -90,4 +99,4 @@ async def GetMicroBiomePatientData(diseaseName: str, participantIndex: int):
             "HasDisease": actualPrediction
         }
 
-        return responseDTO
+    return responseDTO
