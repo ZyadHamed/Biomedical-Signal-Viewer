@@ -1,8 +1,9 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DopplerComponent } from '../doppler/doppler';
 import { FormsModule } from '@angular/forms';
 import { ChangeDetectorRef } from '@angular/core';
+import { Microbiome } from "../microbiome/microbiome";
 declare const Plotly: any;
 
 interface SignalData {
@@ -14,9 +15,10 @@ interface SignalData {
 @Component({
   selector: 'app-signal-viewer',
   standalone: true,
-  imports: [CommonModule, FormsModule, DopplerComponent],
+  imports: [CommonModule, FormsModule, DopplerComponent, Microbiome],
   templateUrl: './signal-viewer.html',
-  styleUrls: ['./signal-viewer.css']
+  styleUrls: ['./signal-viewer.css'],
+  encapsulation: ViewEncapsulation.None 
 })
 export class SignalViewerComponent implements OnInit, OnDestroy {
   

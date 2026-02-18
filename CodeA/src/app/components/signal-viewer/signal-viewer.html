@@ -70,6 +70,31 @@
         <p>Acoustic Signals • Velocity Estimation</p>
       </div>
 
+      <!-- Microbiome -->
+      <div class="signal-type-card" (click)="selectSignalType('microbiome')">
+        <div class="card-icon">
+          <svg width="90" height="90" viewBox="0 0 100 100" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="50" cy="50" r="44" opacity="0.4"/>
+            <circle cx="50" cy="50" r="38" opacity="0.2"/>
+
+            <rect x="40" y="40" width="30" height="12" rx="6" transform="rotate(-45 55 46)" />
+            
+            <path d="M 38 60 Q 30 65 35 75" opacity="0.8"/>
+            <path d="M 43 65 Q 40 75 48 80" opacity="0.6"/>
+
+            <circle cx="30" cy="35" r="5" />
+            <circle cx="42" cy="28" r="4" opacity="0.9"/>
+            <circle cx="32" cy="23" r="3" opacity="0.7"/>
+
+            <path d="M 65 30 Q 70 22 75 30 T 85 30" opacity="0.9"/>
+            
+            <rect x="65" y="65" width="16" height="8" rx="4" transform="rotate(20 73 69)" opacity="0.8"/>
+          </svg>
+        </div>
+        <h3>Microbiome Data</h3>
+        <p>Bacterium Count Visualization • Patient Profile Estimation</p>
+      </div>
+
     </div>
   </div>
   }
@@ -209,11 +234,19 @@
   </div>
   }
 
-  <!-- STEP 3: Doppler Component -->
+  <!-- STEP 2: Doppler Component -->
   @if (step === 2 && signalType === 'doppler') {
   <div>
     <button class="back-btn" (click)="goBack()">&#8592; Back</button>
     <app-doppler></app-doppler>
+  </div>
+  }
+
+    <!-- STEP 2: Doppler Component -->
+  @if (step === 2 && signalType === 'microbiome') {
+  <div>
+    <button class="back-btn" (click)="goBack()">&#8592; Back</button>
+    <app-microbiome></app-microbiome>
   </div>
   }
 
