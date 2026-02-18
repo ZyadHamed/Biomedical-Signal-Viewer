@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { DopplerComponent } from '../doppler/doppler';
 import { FormsModule } from '@angular/forms';
 import { ChangeDetectorRef } from '@angular/core';
 declare const Plotly: any;
@@ -13,7 +14,7 @@ interface SignalData {
 @Component({
   selector: 'app-signal-viewer',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, DopplerComponent],
   templateUrl: './signal-viewer.html',
   styleUrls: ['./signal-viewer.css']
 })
