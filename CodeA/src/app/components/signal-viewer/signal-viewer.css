@@ -1011,29 +1011,24 @@ body {
     max-width: 100%;
     margin-bottom: 15px;
   }
-/* ADD THIS TO YOUR signal-viewer.css FILE */
+}
 
-/* 3-Column Grid for Signal Type Selection */
 .signal-type-grid-four {
   display: grid !important;
   grid-template-columns: repeat(4, 1fr);
   gap: 30px;
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
 }
 
-/* Responsive - Stack to 1 column on mobile */
 @media (max-width: 1024px) {
   .signal-type-grid-four {
-    grid-template-columns: 1fr;
-    max-width: 400px;
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
-@media (min-width: 1025px) and (max-width: 1400px) {
+@media (max-width: 600px) {
   .signal-type-grid-four {
-    grid-template-columns: repeat(2, 1fr);
-    max-width: 800px;
+    grid-template-columns: 1fr;
   }
-}
 }

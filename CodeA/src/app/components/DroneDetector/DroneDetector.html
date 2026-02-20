@@ -1,0 +1,165 @@
+<div class="step-container" style="text-align: left; padding: 30px; max-width: 800px; margin: 0 auto;">
+
+  <!-- Header -->
+  <h2 class="main-title" style="text-align: center;">Drone Sound Classifier</h2>
+  <p class="subtitle" style="text-align: center;">
+    Upload an audio file to detect whether a drone is present
+  </p>
+
+  <!-- Upload panel -->
+  @if (!result && !classifying) {
+    <div class="control-panel">
+      <label class="control-label">Upload Audio File</label>
+
+      <div class="custom-file-upload">
+        <input
+          #fileInput
+          type="file"
+          class="file-input-hidden"
+          accept=".wav,.mp3,.ogg,.flac"
+          (change)="onFileSelected($event)"
+        />
+        <label class="file-upload-label" (click)="fileInput.click()">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <span class="file-text">
+            {{ selectedFile ? selectedFile.name : 'Click to choose an audio file' }}
+          </span>
+        </label>
+        <div class="help-text">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          Accepted formats: .wav · .mp3 · .ogg · .flac
+        </div>
+      </div>
+    </div>
+    
+    <div style="text-align: center; margin-top: 24px;">
+      <button
+        class="back-btn"
+        style="background: linear-gradient(90deg, #1e3c72, #2a5298);"
+        [disabled]="!selectedFile"
+        (click)="classify()"
+      >
+        Classify Audio
+      </button>
+
+      @if (uploadError) {
+        <div class="status-msg status-msg--error" style="margin-top: 16px;">
+          ✖ {{ uploadError }}
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Classifying spinner -->
+  @if (classifying) {
+    <div class="drone-analyzing">
+      <div class="drone-pulse">
+        <svg width="64" height="64" viewBox="0 0 100 100" fill="none"
+             stroke="#2a5298" stroke-width="3" stroke-linecap="round">
+          <circle cx="50" cy="50" r="20" opacity="0.4"/>
+          <path d="M 20 50 Q 20 35 35 35 L 65 35 Q 80 35 80 50 Q 80 65 65 65 L 35 65 Q 20 65 20 50"/>
+          <circle cx="28" cy="42" r="7"/>
+          <circle cx="72" cy="42" r="7"/>
+          <circle cx="28" cy="58" r="7"/>
+          <circle cx="72" cy="58" r="7"/>
+          <line x1="35" y1="42" x2="21" y2="42"/>
+          <line x1="65" y1="42" x2="79" y2="42"/>
+          <line x1="35" y1="58" x2="21" y2="58"/>
+          <line x1="65" y1="58" x2="79" y2="58"/>
+        </svg>
+      </div>
+      <p style="color: #1e3c72; font-weight: 700; font-size: 1.1rem; margin-top: 16px;">
+        Analyzing audio...
+      </p>
+      <p class="text-muted">{{ selectedFile?.name }}</p>
+    </div>
+  }
+
+  <!-- Results -->
+  @if (result) {
+    <div style="margin-bottom: 20px;">
+      <button class="back-btn" (click)="reset()">&#8592; Classify Another File</button>
+    </div>
+
+    <!-- Main verdict card -->
+    <div class="drone-verdict" [class.drone-verdict--detected]="isDrone" [class.drone-verdict--clear]="!isDrone">
+      <div class="drone-verdict__icon">
+      </div>
+    <div style="text-align: center; margin-top: 24px;">
+        @if (isDrone) {
+          <svg width="72" height="72" viewBox="0 0 100 100" fill="none"
+               stroke="currentColor" stroke-width="3" stroke-linecap="round">
+            <circle cx="50" cy="50" r="20" opacity="0.4"/>
+            <path d="M 20 50 Q 20 35 35 35 L 65 35 Q 80 35 80 50 Q 80 65 65 65 L 35 65 Q 20 65 20 50"/>
+            <circle cx="28" cy="42" r="7"/>
+            <circle cx="72" cy="42" r="7"/>
+            <circle cx="28" cy="58" r="7"/>
+            <circle cx="72" cy="58" r="7"/>
+            <line x1="35" y1="42" x2="21" y2="42"/>
+            <line x1="65" y1="42" x2="79" y2="42"/>
+            <line x1="35" y1="58" x2="21" y2="58"/>
+            <line x1="65" y1="58" x2="79" y2="58"/>
+          </svg>
+        }
+        @if (!isDrone) {
+          <svg width="72" height="72" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        }
+      </div>
+
+      <div class="drone-verdict__label">
+        {{ isDrone ? 'Drone Detected' : 'No Drone Detected' }}
+      </div>
+      <div class="drone-verdict__sub">
+        {{ isDrone
+          ? 'The audio contains drone sound signatures.'
+          : 'No drone acoustic patterns were found in this audio.'
+        }}
+      </div>
+
+      <div class="drone-verdict__file">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2">
+          <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+          <polyline points="13 2 13 9 20 9"/>
+        </svg>
+        {{ selectedFile?.name }}
+      </div>
+      <br>
+      <audio
+        controls
+        [src]="audioObjectUrl"
+        style="width: 100%; max-width: 420px; margin-top: 18px; border-radius: 30px; outline: none; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.15));"
+      ></audio>
+    </div>
+
+    <!-- Detail strip -->
+    <div class="drone-detail-strip">
+      <div class="drone-detail-card">
+        <div class="drone-detail-card__val">{{ result.AudioClass === 1.0 ? '1.0' : '0.0' }}</div>
+        <div class="drone-detail-card__label">Classification Output</div>
+      </div>
+      <div class="drone-detail-card">
+        <div class="drone-detail-card__val">{{ isDrone ? 'POSITIVE' : 'NEGATIVE' }}</div>
+        <div class="drone-detail-card__label">Drone Presence</div>
+      </div>
+      <div class="drone-detail-card">
+        <div class="drone-detail-card__val">{{ result.message }}</div>
+        <div class="drone-detail-card__label">API Status</div>
+      </div>
+    </div>
+  }
+
+</div>

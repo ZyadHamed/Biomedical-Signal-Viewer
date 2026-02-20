@@ -3,6 +3,7 @@ from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from MicrobiomeService import GetDiarrheaPatientProfile, GetHydrocephalusPatientProfile, GetDiabetesPatientProfile
+from DroneClassificationService import ClassifyDroneSignal
 
 import os
 from pydantic import BaseModel
@@ -19,13 +20,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.mount("/static", StaticFiles(directory="static"), name="static")
 
 ALLOWED_Dataset_Extensions_For_Microbiome = {'.csv'}
+ALLOWED_Dataset_Extensions_For_Drone_Detection = {'.wav', '.mp3'}
 
 
 @app.post("/uploadmicrobiomedataset")
-async def create_upload_file(diseaseName: str, file: UploadFile):
+async def UploadMicrobiomeDataset(diseaseName: str, file: UploadFile):
     try:
         contents = await file.read()
         file_extension = os.path.splitext(file.filename)[-1]
@@ -38,14 +39,14 @@ async def create_upload_file(diseaseName: str, file: UploadFile):
             )
         
         if(diseaseName == "Diarrhea"):
-            with open("microbiomeDataDiarrhea" + file_extension, "wb") as binary_file:
+            with open("uploadedFiles/microbiomeDataDiarrhea" + file_extension, "wb") as binary_file:
                 binary_file.write(contents)
         elif(diseaseName == "Hydrocephalus"):
-            with open("microbiomeDataHydrocephalus" + file_extension, "wb") as binary_file:
+            with open("uploadedFiles/microbiomeDataHydrocephalus" + file_extension, "wb") as binary_file:
                 binary_file.write(contents)
 
         elif(diseaseName == "Diabetes"):
-            with open("microbiomeDataDiabetes" + file_extension, "wb") as binary_file:
+            with open("uploadedFiles/microbiomeDataDiabetes" + file_extension, "wb") as binary_file:
                 binary_file.write(contents)
         
         responseDTO = {
@@ -100,3 +101,40 @@ async def GetMicroBiomePatientData(diseaseName: str, participantIndex: int):
         }
 
     return responseDTO
+
+
+@app.post("/classifydronesound")
+async def ClassifyDroneSound(file: UploadFile):
+    try:
+        contents = await file.read()
+        file_extension = os.path.splitext(file.filename)[-1]
+        if file_extension not in ALLOWED_Dataset_Extensions_For_Drone_Detection:
+            return JSONResponse(
+            content = {
+                "message:": f"Invalid file type. Allowed dataset formats: {', '.join(ALLOWED_Dataset_Extensions_For_Drone_Detection)}"
+                },
+            status_code=400
+            )
+        
+
+        with open("uploadedFiles/uploadedDroneDetectionSound" + file_extension, "wb") as binary_file:
+            binary_file.write(contents)
+        
+        classification = ClassifyDroneSignal("uploadedFiles/uploadedDroneDetectionSound" + file_extension, "droneClassifier.joblib")
+        responseDTO = {
+                "message": "Success",
+                "AudioClass": classification
+            }
+        return responseDTO
+
+    except Exception:
+        return JSONResponse(
+            content = {
+                "message:": Exception
+                },
+            status_code=500
+            )
+
+
+
+

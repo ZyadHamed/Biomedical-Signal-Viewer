@@ -4,6 +4,7 @@ import { DopplerComponent } from '../doppler/doppler';
 import { FormsModule } from '@angular/forms';
 import { ChangeDetectorRef } from '@angular/core';
 import { Microbiome } from "../microbiome/microbiome";
+import { DroneDetectoromponent } from "../DroneDetector/DroneDetector";
 declare const Plotly: any;
 
 interface SignalData {
@@ -15,7 +16,7 @@ interface SignalData {
 @Component({
   selector: 'app-signal-viewer',
   standalone: true,
-  imports: [CommonModule, FormsModule, DopplerComponent, Microbiome],
+  imports: [CommonModule, FormsModule, DopplerComponent, Microbiome, DroneDetectoromponent],
   templateUrl: './signal-viewer.html',
   styleUrls: ['./signal-viewer.css'],
   encapsulation: ViewEncapsulation.None 
@@ -81,11 +82,13 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
   selectSignalType(type: string): void {
     this.signalType = type;
     this.step = 2;
+    this.cdr.detectChanges();
   }
 
   selectChannelMode(mode: string): void {
     this.channelMode = mode;
     this.step = 3;
+    this.cdr.detectChanges();
   }
 
   goBack(): void {
@@ -100,6 +103,7 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
         this.channelMode = '';
         this.resetData();
       }
+      this.cdr.detectChanges();
     }
   }
 
