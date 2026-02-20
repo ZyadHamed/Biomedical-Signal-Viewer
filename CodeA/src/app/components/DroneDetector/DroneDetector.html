@@ -143,6 +143,10 @@
         [src]="audioObjectUrl"
         style="width: 100%; max-width: 420px; margin-top: 18px; border-radius: 30px; outline: none; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.15));"
       ></audio>
+      <br>
+      @if (result) {
+        <canvas id="drone-waveform-canvas" class="waveform-canvas"></canvas>
+      }
     </div>
 
     <!-- Detail strip -->
