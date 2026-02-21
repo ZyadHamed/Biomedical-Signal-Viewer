@@ -10,4 +10,5 @@ import { SignalViewerComponent } from './components/signal-viewer/signal-viewer'
 })
 export class App {
   title = 't1';
+  
 }

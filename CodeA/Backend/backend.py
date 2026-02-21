@@ -2,7 +2,7 @@ from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from MicrobiomeService import GetDiarrheaPatientProfile, GetHydrocephalusPatientProfile, GetDiabetesPatientProfile
+from MicrobiomeService import generate_frontend_json
 from DroneClassificationService import ClassifyDroneSignal
 
 import os
@@ -21,15 +21,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-ALLOWED_Dataset_Extensions_For_Microbiome = {'.csv'}
+ALLOWED_Dataset_Extensions_For_Microbiome = {'.csv', '.gz'}
 ALLOWED_Dataset_Extensions_For_Drone_Detection = {'.wav', '.mp3'}
 
 
 @app.post("/uploadmicrobiomedataset")
-async def UploadMicrobiomeDataset(diseaseName: str, file: UploadFile):
+async def UploadMicrobiomeDataset(metadataFile: UploadFile, taxonomyFile: UploadFile):
     try:
-        contents = await file.read()
-        file_extension = os.path.splitext(file.filename)[-1]
+        contents = await metadataFile.read()
+        file_extension = os.path.splitext(metadataFile.filename)[-1]
         if file_extension not in ALLOWED_Dataset_Extensions_For_Microbiome:
             return JSONResponse(
             content = {
@@ -37,17 +37,20 @@ async def UploadMicrobiomeDataset(diseaseName: str, file: UploadFile):
                 },
             status_code=400
             )
-        
-        if(diseaseName == "Diarrhea"):
-            with open("uploadedFiles/microbiomeDataDiarrhea" + file_extension, "wb") as binary_file:
-                binary_file.write(contents)
-        elif(diseaseName == "Hydrocephalus"):
-            with open("uploadedFiles/microbiomeDataHydrocephalus" + file_extension, "wb") as binary_file:
-                binary_file.write(contents)
+        with open("uploadedFiles/microbiomeMetadataFile" + file_extension, "wb") as binary_file:
+            binary_file.write(contents)
 
-        elif(diseaseName == "Diabetes"):
-            with open("uploadedFiles/microbiomeDataDiabetes" + file_extension, "wb") as binary_file:
-                binary_file.write(contents)
+        contents = await taxonomyFile.read()
+        file_extension = os.path.splitext(taxonomyFile.filename)[-1]
+        if file_extension not in ALLOWED_Dataset_Extensions_For_Microbiome:
+            return JSONResponse(
+            content = {
+                "message:": f"Invalid file type. Allowed dataset formats: {', '.join(ALLOWED_Dataset_Extensions_For_Microbiome)}"
+                },
+            status_code=400
+            )
+        with open("uploadedFiles/microbiomeTaxonomyFile" + file_extension, "wb") as binary_file:
+            binary_file.write(contents)
         
         responseDTO = {
                 "message": "Success",
@@ -63,43 +66,9 @@ async def UploadMicrobiomeDataset(diseaseName: str, file: UploadFile):
             )
 
 @app.get("/getmicrobiomepatientdata")
-async def GetMicroBiomePatientData(diseaseName: str, participantIndex: int):
-    responseDTO = {}
-    if(diseaseName == "Diarrhea"):
-        BadBacteriaSum, GoodBacteriaSum, DI, actualPrediction, participantID, BacteriaProfile = GetDiarrheaPatientProfile("microbiomeDataDiarrhea.csv", participantIndex)
-        responseDTO = {
-            "message": "Success",
-            "participantID": participantID,
-            "BacteriaProfile": BacteriaProfile,
-            "BadBacteriaSum": BadBacteriaSum,
-            "GoodBacteriaSum": GoodBacteriaSum,
-            "DI": DI,
-            "HasDisease": actualPrediction
-        }
-    elif(diseaseName == "Hydrocephalus"):
-        BadBacteriaSum, GoodBacteriaSum, DI, actualPrediction, participantID, BacteriaProfile = GetHydrocephalusPatientProfile("microbiomeDataHydrocephalus.csv", participantIndex)
-        responseDTO = {
-            "message": "Success",
-            "participantID": participantID,
-            "BacteriaProfile": BacteriaProfile,
-            "BadBacteriaSum": BadBacteriaSum,
-            "GoodBacteriaSum": GoodBacteriaSum,
-            "DI": DI,
-            "HasDisease": actualPrediction
-        }
-    
-    elif(diseaseName == "Diabetes"):
-        BadBacteriaSum, GoodBacteriaSum, DI, actualPrediction, participantID, BacteriaProfile = GetDiabetesPatientProfile("microbiomeDataDiabetes.csv", participantIndex)
-        responseDTO = {
-            "message": "Success",
-            "participantID": participantID,
-            "BacteriaProfile": BacteriaProfile,
-            "BadBacteriaSum": BadBacteriaSum,
-            "GoodBacteriaSum": GoodBacteriaSum,
-            "DI": DI,
-            "HasDisease": actualPrediction
-        }
+async def GetMicroBiomePatientData(participantIndex: int):
 
+    responseDTO = generate_frontend_json(participantIndex, "uploadedFiles/microbiomeTaxonomyFile.gz", "uploadedFiles/microbiomeMetadataFile.csv")
     return responseDTO
 
 
