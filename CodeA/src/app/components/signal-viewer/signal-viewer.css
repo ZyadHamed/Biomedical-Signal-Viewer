@@ -1032,3 +1032,92 @@ body {
     grid-template-columns: 1fr;
   }
 }
+.diagnosis-card {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1.5px solid #d0dff5;
+  box-shadow: 0 4px 20px rgba(30, 60, 120, 0.08);
+  padding: 28px 32px;
+  margin: 20px 0;
+
+  .diagnosis-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 24px;
+    border-bottom: 1.5px solid #e8f0fb;
+    padding-bottom: 16px;
+
+    .diagnosis-icon {
+      font-size: 1.5rem;
+    }
+
+    h3 {
+      margin: 0;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #1a3a6b;
+      letter-spacing: 0.3px;
+    }
+  }
+
+  .diagnosis-body {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .diagnosis-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    .label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #7a95b8;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+  }
+
+  .diagnosis-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1a3a6b;
+    background: #f0f5ff;
+    border: 1.5px solid #c5d8f5;
+    border-radius: 8px;
+    padding: 10px 16px;
+    display: inline-block;
+  }
+
+  .confidence-bar-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+
+    .confidence-bar {
+      flex: 1;
+      height: 10px;
+      background: #e8f0fb;
+      border-radius: 999px;
+      overflow: hidden;
+
+      .confidence-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #3b6fd4, #1a3a6b);
+        border-radius: 999px;
+        transition: width 0.6s ease;
+      }
+    }
+
+    .confidence-value {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #1a3a6b;
+      min-width: 52px;
+      text-align: right;
+    }
+  }
+}

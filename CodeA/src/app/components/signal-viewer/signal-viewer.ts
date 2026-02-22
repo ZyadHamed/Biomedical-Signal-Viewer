@@ -39,6 +39,9 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
   // NEW: Reoccurrence Color Map Controls
   reoccurrenceColorMap: string = 'Viridis';
 
+  diagnosis: string = "";
+  confidence: number = 0;
+
   colorMapOptions: string[] = ['Viridis', 'Plasma', 'Inferno', 'Jet', 'Hot', 'Blues', 'Electric'];
   // NEW: Reoccurrence Map selections
   reoccurrenceChX: number = 0;
@@ -112,63 +115,82 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
     this.displayMode = 'time'; // Reset display mode
   }
 
-  async onFileSelect(event: any): Promise<void> {
-    const files = event.target.files;
-    if (!files || files.length === 0) {
-      alert('Please select a file');
-      return;
-    }
-
-    const file = files[0];
-
-    if (!file.name.toLowerCase().endsWith('.json')) {
-      alert('Please upload a .json file');
-      return;
-    }
-
-    const reader = new FileReader();
-
-    reader.onerror = (error) => {
-      alert('Error reading file');
-    };
-
-    reader.onload = (e: any) => {
-      try {
-        const data: SignalData = JSON.parse(e.target.result);
-
-        if (!data.signals || !data.channels || !data.fs) {
-          throw new Error('Invalid JSON structure');
-        }
-
-        this.originalSignals = data.signals || [];
-        this.fullSignals = this.originalSignals.slice();
-        this.channels = data.channels || [];
-        this.originalFs = data.fs || 500;
-        this.displayFs = this.originalFs;
-        // NEW: Set default channels for Reoccurrence map
-        this.reoccurrenceChX = 0;
-        this.reoccurrenceChY = this.channels.length > 1 ? 1 : 0;
-        if (this.channelMode === 'single') {
-          this.selectedChannels = this.channels.map((_, i) => i === 0);
-          setTimeout(() => {
-            this.plotSignals();
-            this.startScrolling();
-          }, 100);
-        } else {
-          this.selectedChannels = this.channels.map(() => false);
-        }
-
-        const maxSeconds = Math.min(10, this.fullSignals.length / this.displayFs);
-        this.timeWindowSeconds = Math.min(2, maxSeconds);
-        this.timeWindow = Math.round(this.timeWindowSeconds * this.displayFs);
-        this.currentIndex = 0;
-        this.cdr.detectChanges();
-      } catch (error) {
-        alert(`Error loading file: ${error}`);
-      }
-    };
-    reader.readAsText(file);
+async onFileSelect(event: any): Promise<void> {
+  const files = event.target.files;
+  if (!files || files.length === 0) {
+    alert('Please select a file');
+    return;
   }
+
+  const file = files[0];
+  const extension = file.name.split('.').pop()?.toLowerCase();
+
+  const EEG_EXTENSIONS = ['npy', 'set', 'edf', 'bdf'];
+  const ECG_EXTENSIONS = ['mat', 'dat', 'hea', 'csv'];
+
+  let endpoint: string;
+
+  if (EEG_EXTENSIONS.includes(extension)) {
+    endpoint = 'http://127.0.0.1:8000/converteegtojsonandclassify';
+  } else if (ECG_EXTENSIONS.includes(extension)) {
+    endpoint = 'http://127.0.0.1:8000/convertecgtojsonandclassify';
+  } else {
+    alert(`Unsupported file type: .${extension}`);
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      alert(`Error: ${errorData['message'] || 'Failed to process file'}`);
+      return;
+    }
+
+    const responseDTO = await response.json();
+    const data: SignalData = responseDTO.data;
+
+    if (!data.signals || !data.channels || !data.fs) {
+      alert('Invalid data structure received from server');
+      return;
+    }
+
+    this.originalSignals = data.signals || [];
+    this.fullSignals = this.originalSignals.slice();
+    this.channels = data.channels || [];
+    this.originalFs = data.fs || 500;
+    this.displayFs = this.originalFs;
+    this.reoccurrenceChX = 0;
+    this.reoccurrenceChY = this.channels.length > 1 ? 1 : 0;
+    if (this.channelMode === 'single') {
+      this.selectedChannels = this.channels.map((_, i) => i === 0);
+      setTimeout(() => {
+        this.plotSignals();
+        this.startScrolling();
+      }, 100);
+    } else {
+      this.selectedChannels = this.channels.map(() => false);
+    }
+
+    const maxSeconds = Math.min(10, this.fullSignals.length / this.displayFs);
+    this.timeWindowSeconds = Math.min(2, maxSeconds);
+    this.timeWindow = Math.round(this.timeWindowSeconds * this.displayFs);
+    this.currentIndex = 0;
+    this.diagnosis = responseDTO.diagnosis;
+    this.confidence = responseDTO.confidence;
+    this.cdr.detectChanges();
+
+  } catch (error) {
+    alert(`Error loading file: ${error}`);
+  }
+}
 
   plotSignals() : void{
     if (this.signalGraph) {
