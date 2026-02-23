@@ -1,0 +1,292 @@
+/* ─── Upload Card ─────────────────────────────────────────── */
+.sp-card {
+  background: #ffffff;
+  border: 1.5px solid rgba(30, 60, 114, 0.13);
+  border-radius: 16px;
+  padding: 24px 28px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 12px rgba(30, 60, 114, 0.07);
+}
+
+.sp-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #002b5c;
+  margin-bottom: 16px;
+}
+
+.sp-card-header svg {
+  color: #1e3c72;
+}
+
+/* ─── Upload Row ────────────────────────────────────────────── */
+.sp-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1.5px dashed rgba(30, 60, 114, 0.2);
+  background: rgba(30, 60, 114, 0.02);
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.sp-upload-row--dragging {
+  border-color: #1e3c72;
+  background: rgba(30, 60, 114, 0.06);
+}
+
+.sp-file-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 16px;
+  background: #ffffff;
+  border: 1.5px solid #c8d8f0;
+  border-radius: 7px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #1e3c72;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.sp-file-btn:hover {
+  border-color: #1e3c72;
+  background: rgba(30, 60, 114, 0.05);
+}
+
+.sp-file-name {
+  flex: 1;
+  font-size: 0.83rem;
+  color: #4a6080;
+  min-width: 160px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─── Predict Button ────────────────────────────────────────── */
+.sp-predict-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 22px;
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.2s, transform 0.15s;
+  min-width: 130px;
+  height: 36px;
+}
+
+.sp-predict-btn:hover:not(:disabled) {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+
+.sp-predict-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── Loading Dots ──────────────────────────────────────────── */
+.sp-loading-dots {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.sp-loading-dots span {
+  width: 6px;
+  height: 6px;
+  background: #fff;
+  border-radius: 50%;
+  animation: sp-bounce 1.2s ease-in-out infinite;
+}
+
+.sp-loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+.sp-loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes sp-bounce {
+  0%, 80%, 100% { transform: scale(0.7); opacity: 0.5; }
+  40%           { transform: scale(1.1); opacity: 1;   }
+}
+
+/* ─── Progress Bar ──────────────────────────────────────────── */
+.sp-progress-wrap {
+  margin-top: 12px;
+  height: 4px;
+  background: #e8eef6;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.sp-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #1e3c72, #4a90d9);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+/* ─── Error ─────────────────────────────────────────────────── */
+.sp-error-msg {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 12px;
+  padding: 9px 14px;
+  background: #fff5f5;
+  border: 1px solid #f5c6c6;
+  border-radius: 8px;
+  color: #c0392b;
+  font-size: 0.82rem;
+}
+
+/* ─── KPI Strip ─────────────────────────────────────────────── */
+.sp-kpi-card {
+  padding: 18px 24px;
+}
+
+.sp-kpi-grid {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.sp-kpi {
+  flex: 1;
+  min-width: 100px;
+  background: linear-gradient(160deg, #f4f8ff 0%, #eaf0fb 100%);
+  border: 1px solid #d0dff5;
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sp-kpi-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #7a97c0;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sp-kpi-value {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #002b5c;
+  font-variant-numeric: tabular-nums;
+}
+
+.sp-kpi-delta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.sp-kpi--up   { color: #1a8a4a; }
+.sp-kpi--down { color: #c0392b; }
+
+/* ─── Tabs ──────────────────────────────────────────────────── */
+.sp-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.sp-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: 1.5px solid #d0dff5;
+  background: #ffffff;
+  color: #4a6080;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sp-tab:hover {
+  border-color: #1e3c72;
+  color: #1e3c72;
+}
+
+.sp-tab--active {
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  border-color: transparent;
+  color: #ffffff;
+}
+
+.sp-tab--active svg {
+  stroke: #ffffff;
+}
+
+/* ─── Chart Cards ───────────────────────────────────────────── */
+.sp-chart-card {
+  padding: 20px 22px;
+}
+
+.sp-chart-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.sp-chart-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #002b5c;
+  margin: 0;
+}
+
+.sp-chart-badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.sp-chart-badge--orig {
+  background: rgba(30, 60, 114, 0.1);
+  color: #1e3c72;
+  border: 1px solid rgba(30, 60, 114, 0.2);
+}
+
+.sp-chart-badge--fore {
+  background: rgba(22, 160, 100, 0.1);
+  color: #107a50;
+  border: 1px solid rgba(22, 160, 100, 0.25);
+}
+
+/* ─── Plotly host ───────────────────────────────────────────── */
+.sp-plotly-host {
+  width: 100%;
+  min-height: 420px;
+}
+
+/* Neutralise signal-graph's internal wrapper background */
+.sp-chart-card .graph-container {
+  background: transparent !important;
+  box-shadow: none !important;
+}

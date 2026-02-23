@@ -1,0 +1,152 @@
+<!-- ── Upload Card ── -->
+<div class="sp-card sp-upload-card">
+  <div class="sp-card-header">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="2">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="17 8 12 3 7 8"/>
+      <line x1="12" y1="3" x2="12" y2="15"/>
+    </svg>
+    <span>Upload Stock Dataset</span>
+  </div>
+
+  <div class="sp-upload-row"
+       [class.sp-upload-row--dragging]="isDragging"
+       (dragover)="onDragOver($event)"
+       (dragleave)="isDragging = false"
+       (drop)="onDrop($event)">
+
+    <label class="sp-file-btn">
+      <input type="file" hidden (change)="onFileSelected($event)"
+             accept=".csv,.xlsx,.xls,.json">
+      Choose File
+    </label>
+
+    <span class="sp-file-name">
+      {{ selectedFile ? selectedFile.name : 'Select a stock dataset file' }}
+    </span>
+
+    <button class="sp-predict-btn"
+            [disabled]="!selectedFile || isLoading"
+            (click)="upload()">
+      <span *ngIf="!isLoading">Run Forecast</span>
+      <span *ngIf="isLoading" class="sp-loading-dots">
+        <span></span><span></span><span></span>
+      </span>
+    </button>
+  </div>
+
+  <!-- Progress bar -->
+  <div *ngIf="isLoading" class="sp-progress-wrap">
+    <div class="sp-progress-bar" [style.width.%]="uploadProgress"></div>
+  </div>
+
+  <!-- Error -->
+  <div *ngIf="error" class="sp-error-msg">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="12" y1="8" x2="12" y2="12"/>
+      <line x1="12" y1="16" x2="12" y2="16"/>
+    </svg>
+    {{ error }}
+  </div>
+</div>
+
+<!-- ── Results ── -->
+<ng-container *ngIf="response">
+
+  <!-- KPI Strip -->
+  <div class="sp-card sp-kpi-card">
+    <div class="sp-kpi-grid">
+      <div class="sp-kpi" *ngFor="let ch of response.original.channels; let i = index">
+        <span class="sp-kpi-label">{{ ch.toUpperCase() }}</span>
+        <span class="sp-kpi-value">{{ lastOriginal[i] | number:'1.2-2' }}</span>
+        <span class="sp-kpi-delta"
+              [class.sp-kpi--up]="forecastDelta[i] >= 0"
+              [class.sp-kpi--down]="forecastDelta[i] < 0">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+            <path *ngIf="forecastDelta[i] >= 0" d="M12 4l8 16H4z"/>
+            <path *ngIf="forecastDelta[i] < 0" d="M12 20l8-16H4z"/>
+          </svg>
+          {{ forecastDelta[i] | number:'1.2-2' }}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="sp-tabs">
+    <button class="sp-tab" [class.sp-tab--active]="activeTab === 'line'"
+            (click)="setTab('line')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+      </svg>
+      Line Chart
+    </button>
+    <button class="sp-tab" [class.sp-tab--active]="activeTab === 'candle'"
+            (click)="setTab('candle')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2">
+        <rect x="3" y="8" width="4" height="8" rx="1"/>
+        <line x1="5" y1="4" x2="5" y2="8"/>
+        <line x1="5" y1="16" x2="5" y2="20"/>
+        <rect x="10" y="5" width="4" height="10" rx="1"/>
+        <line x1="12" y1="2" x2="12" y2="5"/>
+        <line x1="12" y1="15" x2="12" y2="19"/>
+        <rect x="17" y="9" width="4" height="7" rx="1"/>
+        <line x1="19" y1="5" x2="19" y2="9"/>
+        <line x1="19" y1="16" x2="19" y2="20"/>
+      </svg>
+      Candlestick
+    </button>
+  </div>
+
+  <!-- ── Line Chart View ── -->
+  <ng-container *ngIf="activeTab === 'line'">
+    <div class="sp-card sp-chart-card">
+      <div class="sp-chart-title-row">
+        <span class="sp-chart-badge sp-chart-badge--orig">Historical</span>
+        <h3 class="sp-chart-title">Original Signal — All Channels</h3>
+      </div>
+      <app-signal-graph
+        [config]="originalConfig!"
+        xAxisLabel="Sample Index"
+        graphId="sp-original-graph">
+      </app-signal-graph>
+    </div>
+
+    <div class="sp-card sp-chart-card">
+      <div class="sp-chart-title-row">
+        <span class="sp-chart-badge sp-chart-badge--fore">Forecast</span>
+        <h3 class="sp-chart-title">Predicted Signal — All Channels</h3>
+      </div>
+      <app-signal-graph
+        [config]="forecastConfig!"
+        xAxisLabel="Sample Index"
+        graphId="sp-forecast-graph">
+      </app-signal-graph>
+    </div>
+  </ng-container>
+
+  <!-- ── Candlestick View ── -->
+  <ng-container *ngIf="activeTab === 'candle'">
+    <div class="sp-card sp-chart-card">
+      <div class="sp-chart-title-row">
+        <span class="sp-chart-badge sp-chart-badge--orig">Historical</span>
+        <h3 class="sp-chart-title">Original OHLC — Candlestick</h3>
+      </div>
+      <div id="sp-candle-original" class="sp-plotly-host"></div>
+    </div>
+
+    <div class="sp-card sp-chart-card">
+      <div class="sp-chart-title-row">
+        <span class="sp-chart-badge sp-chart-badge--fore">Forecast</span>
+        <h3 class="sp-chart-title">Forecasted OHLC — Candlestick</h3>
+      </div>
+      <div id="sp-candle-forecast" class="sp-plotly-host"></div>
+    </div>
+  </ng-container>
+
+</ng-container>

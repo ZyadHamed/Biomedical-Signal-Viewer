@@ -418,12 +418,80 @@ class OHLCRidge:
         )
     
 
+def clean_df(df):
+    df.columns = [c.lower().strip() for c in df.columns]
+    
+    # If no close column, approximate it from available columns
+    if "close" not in df.columns:
+        if "price" in df.columns:
+            df["close"] = df["price"]
+        elif "last" in df.columns:
+            df["close"] = df["last"]
+        elif "adj close" in df.columns:
+            df["close"] = df["adj close"]
+    
+    # If still missing open/high/low, approximate from close
+    for col in ["open", "high", "low"]:
+        if col not in df.columns:
+            df[col] = df["close"]
+
+    # Strip commas from numbers like "1,234.56"
+    for col in ["open", "high", "low", "close"]:
+        df[col] = df[col].astype(str).str.replace(",", "", regex=False)
+
+    df[["open", "high", "low", "close"]] = df[["open", "high", "low", "close"]].apply(pd.to_numeric, errors="coerce")
+    df = df.dropna(subset=["open", "high", "low", "close"])
+
+    return df
+
 from pathlib import Path
 
-def Forecast(csv_path, n_days=10):
-    with open("/kaggle/working/models.pkl", "rb") as f:
+def PredictStockSignal(csv_path,):
+    df = clean_df(pd.read_csv(csv_path))
+    n_days = len(df)
+    forecast = Forecast(csv_path, n_days=n_days+10)
+    
+    output = {
+        "original": {
+            "signals": df[["open", "high", "low", "close"]].values.tolist(),
+            "channels": ["open", "high", "low", "close"],
+            "fs": 1
+        },
+        "forecast": {
+            "signals": forecast[["open", "high", "low", "close"]].values.tolist(),
+            "channels": ["open", "high", "low", "close"],
+            "fs": 1
+        }
+    }
+
+    return output
+
+def Forecast(csv_path, n_days=10, extra_forecast_multiplier=0.1):
+    import __main__
+    __main__.OHLCRidge = OHLCRidge
+    with open("models.pkl", "rb") as f:
         models = pickle.load(f)
     
-    df = pd.read_csv(csv_path)
+    df = clean_df(pd.read_csv(csv_path))
     p = Path(csv_path)
-    return models[p.stem].predict(df, n_days=n_days)
+    model = models[p.stem]
+    
+    lookback = 31
+    step = 5
+    all_predictions = []
+
+    # Rolling predictions over the original signal
+    for start in range(0, len(df) - lookback, step):
+        window = df.iloc[start: start + lookback]
+        if len(window) < lookback:
+            break
+        pred = model.predict(window, n_days=step)
+        all_predictions.append(pred)
+
+    # Extra predictions beyond the original signal
+    # Use the last `lookback` rows of df as the seed window
+    extra_days = int(len(df) * extra_forecast_multiplier)
+    extra_pred = model.predict(df.tail(lookback), n_days=extra_days)
+    all_predictions.append(extra_pred)
+
+    return pd.concat(all_predictions, ignore_index=True)

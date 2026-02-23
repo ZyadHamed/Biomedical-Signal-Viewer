@@ -6,6 +6,7 @@ from MicrobiomeService import generate_frontend_json
 from DroneClassificationService import ClassifyDroneSignal
 from EEGService import npy_to_json, PredictEEGSignal
 from ECGService import mat_to_json, PredictECGSignal, PredictECGSignalMLBased
+from StocksService import PredictStockSignal
 
 import os
 from pydantic import BaseModel
@@ -200,12 +201,7 @@ async def PredictStock(file: UploadFile):
         with open("uploadedFiles/Stocks/" + file.filename, "wb") as binary_file:
             binary_file.write(contents)
         
-        fileJSON = mat_to_json("uploadedFiles/ECGFiles/" + file.filename)
-        
-        classification, confidence = PredictECGSignal("uploadedFiles/ECGFiles/" + file.filename)
-
-        classificationML, confidenceML = PredictECGSignalMLBased("uploadedFiles/ECGFiles/" + file.filename)
-        responseDTO = {"diagnosis": classification, "confidence": confidence, "MLDiagnosis": classificationML, "MLConfidence":confidenceML, "data": fileJSON}
+        responseDTO = PredictStockSignal("uploadedFiles/Stocks/" + file.filename)
         return responseDTO
 
     except Exception:

@@ -6,6 +6,7 @@ import { ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { Microbiome } from "../microbiome/microbiome";
 import { DroneDetectoromponent } from "../DroneDetector/DroneDetector";
 import { SignalGraphComponent, SignalGraphConfig } from '../signal-graph/signal-graph.component';
+import { StockPredictComponent } from "../stock-analyzer/stock-predict.component";
 
 interface SignalData {
   signals: number[][];
@@ -16,39 +17,37 @@ interface SignalData {
 @Component({
   selector: 'app-signal-viewer',
   standalone: true,
-  imports: [CommonModule, FormsModule, DopplerComponent, Microbiome, DroneDetectoromponent, SignalGraphComponent],
+  imports: [CommonModule, FormsModule, DopplerComponent, Microbiome, DroneDetectoromponent, SignalGraphComponent, StockPredictComponent],
   templateUrl: './signal-viewer.html',
   styleUrls: ['./signal-viewer.css'],
   changeDetection: ChangeDetectionStrategy.Default,
-  encapsulation: ViewEncapsulation.None 
+  encapsulation: ViewEncapsulation.None
 })
-
 export class SignalViewerComponent implements OnInit, OnDestroy {
   @ViewChild(SignalGraphComponent) signalGraph!: SignalGraphComponent;
+
   // Workflow state
   step: number = 1;
   signalType: string = '';
   channelMode: string = '';
 
-  // NEW: Display Mode State (Time Domain vs Reoccurrence,polar and xor Maps)
+  // Display mode
   displayMode: 'time' | 'reoccurrence' | 'polar' | 'xor' = 'time';
 
-  // NEW: Polar Plot Controls
+  // Polar
   polarMode: 'fixed' | 'cumulative' = 'fixed';
 
-  // NEW: Reoccurrence Color Map Controls
+  // Reoccurrence
   reoccurrenceColorMap: string = 'Viridis';
-
-  diagnosis: string = "";
-  confidence: number = 0;
-
-  mlDiagnosis: string = "";
-  mlConfidence: number = 0;
-
   colorMapOptions: string[] = ['Viridis', 'Plasma', 'Inferno', 'Jet', 'Hot', 'Blues', 'Electric'];
-  // NEW: Reoccurrence Map selections
   reoccurrenceChX: number = 0;
   reoccurrenceChY: number = 0;
+
+  // Diagnosis
+  diagnosis: string = "";
+  confidence: number = 0;
+  mlDiagnosis: string = "";
+  mlConfidence: number = 0;
 
   // Signal data
   originalSignals: number[][] = [];
@@ -57,29 +56,20 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
   originalFs: number = 500;
   displayFs: number = 500;
 
-  // Display settings
-  currentIndex: number = 0;
-  timeWindow: number = 1000;
-  timeWindowSeconds: number = 2;
-  isPaused: boolean = false;
-
-  // Playback speed multiplier
-  playbackSpeed: number = 1;
-
   // Channel selection
   selectedChannels: boolean[] = [];
 
-  // Timer
-  private timer: any = null;
+  constructor(public cdr: ChangeDetectorRef) {}
 
-  constructor(private cdr: ChangeDetectorRef) {}
+  ngOnInit(): void {}
 
-  ngOnInit(): void { }
+  // ── No timer here. The child (SignalGraphComponent) owns the playback loop. ──
 
   ngOnDestroy(): void {
-    this.stopScrolling();
+    // Nothing to clean up — child handles its own timer
   }
 
+  // ── Navigation ───────────────────────────────────────────────────
   selectSignalType(type: string): void {
     this.signalType = type;
     this.step = 2;
@@ -95,229 +85,150 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
   goBack(): void {
     if (this.step > 1) {
       this.step--;
-      if (this.step === 1) {
-        this.signalType = '';
-        this.channelMode = '';
-        this.resetData();
-      }
-      if (this.step === 2) {
-        this.channelMode = '';
-        this.resetData();
-      }
+      if (this.step === 1) { this.signalType = ''; this.channelMode = ''; this.resetData(); }
+      if (this.step === 2) { this.channelMode = ''; this.resetData(); }
       this.cdr.detectChanges();
     }
   }
 
   resetData(): void {
-    this.stopScrolling();
     this.originalSignals = [];
     this.fullSignals = [];
     this.channels = [];
     this.selectedChannels = [];
-    this.currentIndex = 0;
-    this.displayMode = 'time'; // Reset display mode
+    this.displayMode = 'time';
   }
 
-async onFileSelect(event: any): Promise<void> {
-  const files = event.target.files;
-  if (!files || files.length === 0) {
-    alert('Please select a file');
-    return;
-  }
+  // ── File loading ─────────────────────────────────────────────────
+  async onFileSelect(event: any): Promise<void> {
+    const files = event.target.files;
+    if (!files || files.length === 0) { alert('Please select a file'); return; }
 
-  const file = files[0];
-  const extension = file.name.split('.').pop()?.toLowerCase();
+    const file = files[0];
+    const extension = file.name.split('.').pop()?.toLowerCase();
 
-  const EEG_EXTENSIONS = ['npy', 'set', 'edf', 'bdf'];
-  const ECG_EXTENSIONS = ['mat', 'dat', 'hea', 'csv'];
+    const EEG_EXTENSIONS = ['npy', 'set', 'edf', 'bdf'];
+    const ECG_EXTENSIONS = ['mat', 'dat', 'hea', 'csv'];
 
-  let endpoint: string;
-
-  if (EEG_EXTENSIONS.includes(extension)) {
-    endpoint = 'http://127.0.0.1:8000/converteegtojsonandclassify';
-  } else if (ECG_EXTENSIONS.includes(extension)) {
-    endpoint = 'http://127.0.0.1:8000/convertecgtojsonandclassify';
-  } else {
-    alert(`Unsupported file type: .${extension}`);
-    return;
-  }
-
-  const formData = new FormData();
-  formData.append('file', file);
-
-  try {
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      alert(`Error: ${errorData['message'] || 'Failed to process file'}`);
-      return;
-    }
-
-    const responseDTO = await response.json();
-    const data: SignalData = responseDTO.data;
-
-    if (!data.signals || !data.channels || !data.fs) {
-      alert('Invalid data structure received from server');
-      return;
-    }
-
-    this.originalSignals = data.signals || [];
-    this.fullSignals = this.originalSignals.slice();
-    this.channels = data.channels || [];
-    this.originalFs = data.fs || 500;
-    this.displayFs = this.originalFs;
-    this.reoccurrenceChX = 0;
-    this.reoccurrenceChY = this.channels.length > 1 ? 1 : 0;
-    if (this.channelMode === 'single') {
-      this.selectedChannels = this.channels.map((_, i) => i === 0);
-      setTimeout(() => {
-        this.plotSignals();
-        this.startScrolling();
-      }, 100);
+    let endpoint: string;
+    if (EEG_EXTENSIONS.includes(extension)) {
+      endpoint = 'http://127.0.0.1:8000/converteegtojsonandclassify';
+    } else if (ECG_EXTENSIONS.includes(extension)) {
+      endpoint = 'http://127.0.0.1:8000/convertecgtojsonandclassify';
     } else {
-      this.selectedChannels = this.channels.map(() => false);
+      alert(`Unsupported file type: .${extension}`);
+      return;
     }
 
-    const maxSeconds = Math.min(10, this.fullSignals.length / this.displayFs);
-    this.timeWindowSeconds = Math.min(2, maxSeconds);
-    this.timeWindow = Math.round(this.timeWindowSeconds * this.displayFs);
-    this.currentIndex = 0;
-    this.diagnosis = responseDTO.diagnosis;
-    this.confidence = responseDTO.confidence;
-    if (ECG_EXTENSIONS.includes(extension)){
-      this.mlDiagnosis = responseDTO.MLDiagnosis
-      this.mlConfidence = responseDTO.MLConfidence
-    }
-    this.cdr.detectChanges();
+    const formData = new FormData();
+    formData.append('file', file);
 
-  } catch (error) {
-    alert(`Error loading file: ${error}`);
+    try {
+      const response = await fetch(endpoint, { method: 'POST', body: formData });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        alert(`Error: ${errorData['message'] || 'Failed to process file'}`);
+        return;
+      }
+
+      const responseDTO = await response.json();
+      const data: SignalData = responseDTO.data;
+
+      if (!data.signals || !data.channels || !data.fs) {
+        alert('Invalid data structure received from server');
+        return;
+      }
+
+      this.originalSignals      = data.signals || [];
+      this.fullSignals          = this.originalSignals.slice();
+      this.channels             = data.channels || [];
+      this.originalFs           = data.fs || 500;
+      this.displayFs            = this.originalFs;
+      this.reoccurrenceChX      = 0;
+      this.reoccurrenceChY      = this.channels.length > 1 ? 1 : 0;
+
+      this.selectedChannels = this.channelMode === 'single'
+        ? this.channels.map((_, i) => i === 0)
+        : this.channels.map(() => false);
+
+      this.diagnosis  = responseDTO.diagnosis;
+      this.confidence = responseDTO.confidence;
+      if (ECG_EXTENSIONS.includes(extension)) {
+        this.mlDiagnosis  = responseDTO.MLDiagnosis;
+        this.mlConfidence = responseDTO.MLConfidence;
+      }
+
+      this.cdr.detectChanges();
+
+    } catch (error) {
+      alert(`Error loading file: ${error}`);
+    }
   }
-}
 
-  plotSignals() : void{
-    if (this.signalGraph) {
-      this.signalGraph.config = this.graphConfig;
-      this.signalGraph.render();
-    }
+  // ── Config — passed to child as a one-way binding ─────────────────
+  //
+  // IMPORTANT: only contains fields the PARENT is responsible for.
+  // timeWindow / timeWindowSeconds / currentIndex are intentionally
+  // omitted — the child manages those internally once booted.
+  get graphConfig(): SignalGraphConfig {
+    return {
+      mode:                 this.displayMode,
+      signals:              this.fullSignals,
+      channels:             this.channels,
+      fs:                   this.displayFs,
+      signalType:           this.signalType,
+      selectedChannels:     this.selectedChannels,
+      // These seed the child on first load only; after that the child owns them.
+      currentIndex:         0,
+      timeWindow:           Math.round(2 * this.displayFs),
+      timeWindowSeconds:    2,
+      polarMode:            this.polarMode,
+      reoccurrenceChX:      this.reoccurrenceChX,
+      reoccurrenceChY:      this.reoccurrenceChY,
+      reoccurrenceColorMap: this.reoccurrenceColorMap,
+    };
   }
-  // NEW: Method to toggle between modes
+
+  // ── Display mode ─────────────────────────────────────────────────
   setDisplayMode(mode: 'time' | 'reoccurrence' | 'polar' | 'xor'): void {
     this.displayMode = mode;
-    this.plotSignals();
-    if (!this.timer) {
-      this.startScrolling();
-    }
     this.cdr.detectChanges();
   }
 
-  // NEW: Method to handle X and Y channel selection for Reoccurrence Map
+  // ── Reoccurrence channel selectors ───────────────────────────────
   onReoccurrenceChannelChange(axis: 'x' | 'y', event: Event): void {
-    const selectElement = event.target as HTMLSelectElement;
-    const index = +selectElement.value;
+    const index = +(event.target as HTMLSelectElement).value;
     if (axis === 'x') this.reoccurrenceChX = index;
-    if (axis === 'y') this.reoccurrenceChY = index;
-    this.plotSignals();
+    else              this.reoccurrenceChY = index;
+    this.cdr.detectChanges();
   }
 
-
-  get graphConfig(): SignalGraphConfig {
-  return {
-    mode:                 this.displayMode,
-    signals:              this.fullSignals,
-    channels:             this.channels,
-    fs:                   this.displayFs,
-    signalType:           this.signalType,
-    selectedChannels:     this.selectedChannels,
-    currentIndex:         this.currentIndex,
-    timeWindow:           this.timeWindow,
-    timeWindowSeconds:    this.timeWindowSeconds,
-    polarMode:            this.polarMode,
-    reoccurrenceChX:      this.reoccurrenceChX,
-    reoccurrenceChY:      this.reoccurrenceChY,
-    reoccurrenceColorMap: this.reoccurrenceColorMap,
-  };
-}
-
-startScrolling(): void {
-  this.stopScrolling();
-
-  this.timer = setInterval(() => {
-    if (this.isPaused || !this.fullSignals.length) return;
-    if (this.displayMode === 'time' && !this.selectedChannels.some(c => c)) return;
-
-    this.currentIndex += Math.round(10 * this.playbackSpeed);
-
-    if (this.currentIndex + this.timeWindow >= this.fullSignals.length) {
-      this.currentIndex = 0;
-    }
-      if (this.signalGraph) {
-    this.signalGraph.config = this.graphConfig;
-    this.signalGraph.render();
-  }
-  }, 50);
-}
-  stopScrolling(): void {
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = null;
-    }
-  }
-
-  pause(): void { this.isPaused = true; }
-  resume(): void { this.isPaused = false; }
-  // Update playback speed
-  setPlaybackSpeed(event: Event): void {
-    const selectElement = event.target as HTMLSelectElement;
-    this.playbackSpeed = parseFloat(selectElement.value);
-  }
-  onTimeWindowChange(event: any): void {
-    const seconds = parseFloat(event.target.value);
-    this.timeWindowSeconds = seconds;
-    this.timeWindow = Math.round(seconds * this.displayFs);
-    this.plotSignals();
-  }
-
+  // ── Channel toggles ──────────────────────────────────────────────
   onChannelToggle(index: number): void {
     if (this.channelMode === 'single') {
       this.selectedChannels = this.selectedChannels.map((_, i) => i === index);
     } else {
       this.selectedChannels[index] = !this.selectedChannels[index];
+      // Trigger immutability so Angular's OnPush picks it up if ever switched
+      this.selectedChannels = [...this.selectedChannels];
     }
-
-    if (this.selectedChannels.some(c => c) && !this.timer) {
-      this.plotSignals();
-      this.startScrolling();
-    } else {
-      this.plotSignals();
-    }
+    this.cdr.detectChanges();
   }
 
   onSingleChannelChange(event: Event): void {
-    const selectElement = event.target as HTMLSelectElement;
-    const channelIndex = +selectElement.value;
-
-    this.selectedChannels = this.selectedChannels.map(() => false);
-    this.selectedChannels[channelIndex] = true;
-
-    this.plotSignals();
-    if (!this.timer) {
-      this.startScrolling();
-    }
-  }
-
-  getMaxTimeWindow(): number {
-    if (!this.fullSignals.length) return 10;
-    return Math.min(10, this.fullSignals.length / this.displayFs);
+    const channelIndex = +(event.target as HTMLSelectElement).value;
+    this.selectedChannels = this.selectedChannels.map((_, i) => i === channelIndex);
+    this.cdr.detectChanges();
   }
 
   hasSelectedChannels(): boolean {
     return this.selectedChannels.some(c => c);
   }
-  
-}
 
+  // ── Receive state back from the child (optional — for syncing UI) ─
+  onPlaybackChange(e: { isPaused: boolean; currentIndex: number; timeWindowSeconds: number; playbackSpeed: number }): void {
+    // No-op by default. Add logic here only if the parent template
+    // needs to display playback state (e.g. a status bar outside the graph).
+  }
+}
