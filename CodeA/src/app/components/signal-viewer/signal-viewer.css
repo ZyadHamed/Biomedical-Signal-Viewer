@@ -1121,3 +1121,70 @@ body {
     }
   }
 }
+
+.result-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  margin-top: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.result-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.result-header h2 {
+  font-size: 1.2rem;
+  color: #1a3a6b;
+  font-weight: 700;
+}
+
+.field-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7a99;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+
+.diagnosis-box {
+  background: #eef2fb;
+  border-radius: 8px;
+  padding: 14px 16px;
+  color: #1a3a6b;
+  margin-bottom: 20px;
+}
+
+.confidence-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.progress-bar-container {
+  flex: 1;
+  height: 6px;
+  background: #e0e7f3;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: #1a3a6b;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.confidence-value {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1a3a6b;
+  min-width: 48px;
+  text-align: right;
+}

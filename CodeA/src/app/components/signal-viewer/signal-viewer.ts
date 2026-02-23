@@ -42,6 +42,9 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
   diagnosis: string = "";
   confidence: number = 0;
 
+  mlDiagnosis: string = "";
+  mlConfidence: number = 0;
+
   colorMapOptions: string[] = ['Viridis', 'Plasma', 'Inferno', 'Jet', 'Hot', 'Blues', 'Electric'];
   // NEW: Reoccurrence Map selections
   reoccurrenceChX: number = 0;
@@ -185,6 +188,10 @@ async onFileSelect(event: any): Promise<void> {
     this.currentIndex = 0;
     this.diagnosis = responseDTO.diagnosis;
     this.confidence = responseDTO.confidence;
+    if (ECG_EXTENSIONS.includes(extension)){
+      this.mlDiagnosis = responseDTO.MLDiagnosis
+      this.mlConfidence = responseDTO.MLConfidence
+    }
     this.cdr.detectChanges();
 
   } catch (error) {

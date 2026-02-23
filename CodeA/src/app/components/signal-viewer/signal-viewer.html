@@ -196,7 +196,6 @@
     <div>
       <div class="diagnosis-card">
   <div class="diagnosis-header">
-    <span class="diagnosis-icon">🧠</span>
     <h3>AI Diagnosis Result</h3>
   </div>
   <div class="diagnosis-body">
@@ -208,13 +207,40 @@
       <span class="label">Confidence</span>
       <div class="confidence-bar-wrapper">
         <div class="confidence-bar">
-          <div class="confidence-fill" [style.width.%]="confidence"></div>
+          <div class="confidence-fill" [style.width.%]="confidence * 100"></div>
         </div>
-        <span class="confidence-value">{{ (confidence).toFixed(1) }}%</span>
+        <span class="confidence-value">{{ (confidence* 100).toFixed(1) }}%</span>
       </div>
     </div>
   </div>
 </div>
+<!-- ML Diagnosis Result -->
+<div class="result-card">
+  <div class="result-header">
+    <h2>ML Diagnosis Result</h2>
+  </div>
+
+  <div class="field-group">
+    <label class="field-label">ML DIAGNOSIS</label>
+    <div class="diagnosis-box">
+      <strong>{{ mlDiagnosis }}</strong>
+    </div>
+  </div>
+
+  <div class="field-group">
+    <label class="field-label">ML CONFIDENCE</label>
+    <div class="confidence-row">
+      <div class="progress-bar-container">
+        <div 
+          class="progress-bar-fill" 
+          [style.width.%]="mlConfidence * 100">
+        </div>
+      </div>
+      <span class="confidence-value">{{ mlConfidence * 100 | number:'1.1-1' }}%</span>
+    </div>
+  </div>
+</div>
+<br><br>
       <div class="control-panel text-center mb-3">
         <h5 class="section-title">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 8px;">
@@ -385,6 +411,7 @@
         }
 
         @if (displayMode === 'reoccurrence' || hasSelectedChannels()) {
+          <br>
         <div class="playback-controls">
           <div class="playback-buttons">
             <button class="control-btn pause-btn" (click)="pause()" [disabled]="isPaused" title="Pause Playback">
@@ -414,7 +441,7 @@
               </select>
             </div>
           </div>
-
+          
           <div class="time-control">
             <label class="control-label">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 8px;">

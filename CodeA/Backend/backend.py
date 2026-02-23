@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from MicrobiomeService import generate_frontend_json
 from DroneClassificationService import ClassifyDroneSignal
 from EEGService import npy_to_json, PredictEEGSignal
-from ECGService import mat_to_json, PredictECGSignal
+from ECGService import mat_to_json, PredictECGSignal, PredictECGSignalMLBased
 
 import os
 from pydantic import BaseModel
@@ -24,6 +24,7 @@ app.add_middleware(
 )
 
 ALLOWED_Dataset_Extensions_For_Microbiome = {'.csv', '.gz'}
+ALLOWED_Dataset_Extensions_For_Stocks = {'.csv'}
 ALLOWED_Dataset_Extensions_For_Drone_Detection = {'.wav', '.mp3'}
 ALLOWED_Dataset_Extensions_For_EEG_Conversion = {'.npy'}
 ALLOWED_Dataset_Extensions_For_ECG_Conversion = {'.mat'}
@@ -168,7 +169,43 @@ async def ConvertECGToJSONAndClassify(file: UploadFile):
         fileJSON = mat_to_json("uploadedFiles/ECGFiles/" + file.filename)
         
         classification, confidence = PredictECGSignal("uploadedFiles/ECGFiles/" + file.filename)
-        responseDTO = {"diagnosis": classification, "confidence": confidence, "data": fileJSON}
+
+        classificationML, confidenceML = PredictECGSignalMLBased("uploadedFiles/ECGFiles/" + file.filename)
+        responseDTO = {"diagnosis": classification, "confidence": confidence, "MLDiagnosis": classificationML, "MLConfidence":confidenceML, "data": fileJSON}
+        return responseDTO
+
+    except Exception:
+        return JSONResponse(
+            content = {
+                "message:": Exception
+                },
+            status_code=500
+            )
+    
+
+@app.post("/predictstock")
+async def PredictStock(file: UploadFile):
+    try:
+        contents = await file.read()
+        file_extension = os.path.splitext(file.filename)[-1]
+        if file_extension not in ALLOWED_Dataset_Extensions_For_Stocks:
+            return JSONResponse(
+            content = {
+                "message:": f"Invalid file type. Allowed dataset formats: {', '.join(ALLOWED_Dataset_Extensions_For_Stocks)}"
+                },
+            status_code=400
+            )
+        
+
+        with open("uploadedFiles/Stocks/" + file.filename, "wb") as binary_file:
+            binary_file.write(contents)
+        
+        fileJSON = mat_to_json("uploadedFiles/ECGFiles/" + file.filename)
+        
+        classification, confidence = PredictECGSignal("uploadedFiles/ECGFiles/" + file.filename)
+
+        classificationML, confidenceML = PredictECGSignalMLBased("uploadedFiles/ECGFiles/" + file.filename)
+        responseDTO = {"diagnosis": classification, "confidence": confidence, "MLDiagnosis": classificationML, "MLConfidence":confidenceML, "data": fileJSON}
         return responseDTO
 
     except Exception:
