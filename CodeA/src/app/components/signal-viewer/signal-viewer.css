@@ -1188,3 +1188,38 @@ body {
   min-width: 48px;
   text-align: right;
 }
+
+/* Hide the ugly default input completely */
+.hidden-file-input {
+  display: none;
+}
+
+/* Style the label to look like a modern button */
+.modern-blue-upload {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  background-color: #2563eb; /* Modern vibrant blue */
+  color: #ffffff;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+  transition: all 0.2s ease-in-out;
+}
+
+/* Hover effect */
+.modern-blue-upload:hover {
+  background-color: #1d4ed8; /* Slightly darker blue */
+  transform: translateY(-1px);
+  box-shadow: 0 6px 8px -1px rgba(37, 99, 235, 0.3);
+}
+
+/* Click effect */
+.modern-blue-upload:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 4px -1px rgba(37, 99, 235, 0.2);
+}
