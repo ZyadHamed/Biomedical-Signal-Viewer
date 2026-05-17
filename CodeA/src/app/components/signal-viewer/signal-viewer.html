@@ -193,7 +193,7 @@
       <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
       <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/>
     </svg>
-    Upload EEG Data
+    Upload Data
   </label>
 
   <input
@@ -203,6 +203,11 @@
     (change)="onFileSelect($event)"
     accept=".npy,.mat"
   >
+  @if (selectedFile != '') 
+  {
+    <h5>{{selectedFile}}</h5>
+  }
+
 </div>
       </div>
     </div>
@@ -232,6 +237,7 @@
         </div>
       </div>
 
+      @if(signalType === 'ecg'){
       <div class="result-card">
         <div class="result-header">
           <h2>ML Diagnosis Result</h2>
@@ -252,6 +258,8 @@
           </div>
         </div>
       </div>
+      }
+
 
       <br><br>
 
@@ -314,25 +322,25 @@
                 Use (change) + ngModel separately so Angular picks up the new
                 value and re-evaluates graphConfig without calling plotSignals().
               -->
-              <select class="custom-select"
-                      [value]="reoccurrenceChX"
-                      (change)="onReoccurrenceChannelChange('x', $event)">
-                @for (channel of channels; track $index) {
-                <option [value]="$index">{{ channel }}</option>
-                }
-              </select>
+            <select class="custom-select"
+                    [ngModel]="reoccurrenceChX"
+                    (ngModelChange)="onReoccurrenceChannelChange('x', $event)">
+              @for (channel of channels; track $index) {
+                <option [ngValue]="$index">{{ channel }}</option>
+              }
+            </select>
             </div>
           </div>
           <div class="col-md-4">
             <div class="select-group">
               <label class="select-label">Y-Axis Channel</label>
-              <select class="custom-select"
-                      [value]="reoccurrenceChY"
-                      (change)="onReoccurrenceChannelChange('y', $event)">
-                @for (channel of channels; track $index) {
-                <option [value]="$index">{{ channel }}</option>
-                }
-              </select>
+          <select class="custom-select"
+                  [ngModel]="reoccurrenceChY"
+                  (ngModelChange)="onReoccurrenceChannelChange('y', $event)">
+            @for (channel of channels; track $index) {
+              <option [ngValue]="$index">{{ channel }}</option>
+            }
+          </select>
             </div>
           </div>
           <div class="col-md-4">
@@ -425,12 +433,14 @@
 
         @if (channelMode === 'single') {
         <div class="single-channel-selector">
-          <select class="custom-select large" (change)="onSingleChannelChange($event)">
-            <option value="" disabled selected>-- Select a Channel --</option>
-            @for (channel of channels; track $index) {
-            <option [value]="$index">{{ channel }}</option>
-            }
-          </select>
+<select class="custom-select large"
+        [ngModel]="getSelectedSingleChannel()"
+        (ngModelChange)="onSingleChannelChange($event)">
+  <option [ngValue]="null" disabled>-- Select a Channel --</option>
+  @for (channel of channels; track $index) {
+    <option [ngValue]="$index">{{ channel }}</option>
+  }
+</select>
         </div>
         }
         }

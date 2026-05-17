@@ -12,6 +12,7 @@ interface StockSignalData {
   signals: number[][];
   channels: string[];
   fs: number;
+  dates: string[];  
 }
 
 interface PredictResponse {
@@ -149,7 +150,8 @@ export class StockPredictComponent implements OnDestroy, AfterViewInit {
       polarMode: 'fixed',
       reoccurrenceChX: 0,
       reoccurrenceChY: 1,
-      reoccurrenceColorMap: 'Viridis'
+      reoccurrenceColorMap: 'Viridis',
+      dates: data.dates ?? [],
     });
 
     this.originalConfig = buildConfig(original, 'Stock');
@@ -186,7 +188,7 @@ export class StockPredictComponent implements OnDestroy, AfterViewInit {
 
     Plotly.react(el, [{
       type: 'candlestick',
-      x: data.signals.map((_, i) => i + 1),
+      x: data.dates?.length ? data.dates : data.signals.map((_, i) => i + 1),
       open:  data.signals.map(r => r[openIdx]),
       high:  data.signals.map(r => r[highIdx]),
       low:   data.signals.map(r => r[lowIdx]),
@@ -197,7 +199,8 @@ export class StockPredictComponent implements OnDestroy, AfterViewInit {
     }], {
       title: { text: title, font: { size: 18, color: '#002b5c' } },
       xaxis: {
-        title: 'Sample Index',
+        title: data.dates?.length ? 'Date' : 'Sample Index',
+        type: data.dates?.length ? 'date' : '-',
         rangeslider: { visible: true, thickness: 0.05 },
         gridcolor: '#e8eef6',
         linecolor: '#c8d8f0',

@@ -37,6 +37,8 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
   // Polar
   polarMode: 'fixed' | 'cumulative' = 'fixed';
 
+  selectedFile: string = ''
+
   // Reoccurrence
   reoccurrenceColorMap: string = 'Viridis';
   colorMapOptions: string[] = ['Viridis', 'Plasma', 'Inferno', 'Jet', 'Hot', 'Blues', 'Electric'];
@@ -105,6 +107,7 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
     if (!files || files.length === 0) { alert('Please select a file'); return; }
 
     const file = files[0];
+    this.selectedFile = file.name;
     const extension = file.name.split('.').pop()?.toLowerCase();
 
     const EEG_EXTENSIONS = ['npy', 'set', 'edf', 'bdf'];
@@ -197,12 +200,16 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
   }
 
   // ── Reoccurrence channel selectors ───────────────────────────────
-  onReoccurrenceChannelChange(axis: 'x' | 'y', event: Event): void {
-    const index = +(event.target as HTMLSelectElement).value;
-    if (axis === 'x') this.reoccurrenceChX = index;
-    else              this.reoccurrenceChY = index;
+  onReoccurrenceChannelChange(axis: 'x' | 'y', value: number): void {
+    if (axis === 'x') this.reoccurrenceChX = value;
+    else              this.reoccurrenceChY = value;
     this.cdr.detectChanges();
   }
+
+  getSelectedSingleChannel(): number | null {
+  const idx = this.selectedChannels.findIndex(c => c);
+  return idx === -1 ? null : idx;
+}
 
   // ── Channel toggles ──────────────────────────────────────────────
   onChannelToggle(index: number): void {
@@ -216,8 +223,7 @@ export class SignalViewerComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
-  onSingleChannelChange(event: Event): void {
-    const channelIndex = +(event.target as HTMLSelectElement).value;
+  onSingleChannelChange(channelIndex: number): void {
     this.selectedChannels = this.selectedChannels.map((_, i) => i === channelIndex);
     this.cdr.detectChanges();
   }

@@ -17,6 +17,7 @@ export interface SignalGraphConfig {
   channels: string[];
   fs: number;
   signalType: string;
+  dates?: string[]; 
 
   // Time / Polar / XOR
   selectedChannels: boolean[];
@@ -187,6 +188,57 @@ export interface SignalGraphConfig {
     .empty-title.success { color: #22c55e; }
     .empty-subtitle { margin: 0; font-size: 13px; }
     .signal-graph { width: 100%; }
+
+    .sg-style-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 18px;
+    background: #f8fafc;
+    border: 1px solid #d8e2ee;
+    border-bottom: none;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+  }
+
+  .sg-style-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .sg-channel-pill {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    min-width: 50px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .sg-color-pick {
+    width: 32px; height: 28px;
+    border: 1px solid #c8d5e2;
+    border-radius: 6px;
+    padding: 2px;
+    cursor: pointer;
+    background: none;
+  }
+
+  .sg-style-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #7a8fa6;
+    white-space: nowrap;
+  }
+
   `],
   template: `
     <div class="sg-root">
@@ -258,6 +310,37 @@ export interface SignalGraphConfig {
                   (click)="loop = !loop" title="Toggle loop">↻ Loop</button>
 
         </div>
+
+        <!-- ── PER-CHANNEL STYLE CONTROLS ── -->
+@if (config?.mode === 'time') {
+  <div class="sg-style-bar">
+    @for (chIdx of getCheckedIndices(); track chIdx; let i = $index) {
+      <div class="sg-style-row">
+
+        <span class="sg-channel-pill" [style.background]="channelColors[i]">
+          {{ config.channels[chIdx] }}
+        </span>
+
+        <!-- Color picker -->
+        <label class="sg-style-label">Color</label>
+        <input type="color"
+               class="sg-color-pick"
+               [value]="channelColors[i]"
+               (input)="setChannelColor(i, $any($event.target).value)">
+
+        <!-- Thickness slider -->
+        <label class="sg-style-label">Thickness</label>
+        <input type="range" class="sg-slider" style="width:80px"
+               min="0.5" max="6" step="0.5"
+               [value]="channelWidths[i]"
+               (input)="setChannelWidth(i, +$any($event.target).value)">
+        <span class="sg-slider-val">{{ channelWidths[i] }}px</span>
+
+      </div>
+    }
+  </div>
+}
+
       }
 
       <div class="graph-container">
@@ -322,6 +405,12 @@ export class SignalGraphComponent implements OnChanges, OnDestroy, AfterViewInit
     '#2980b9', '#8e44ad'
   ];
 
+    // After the COLORS array declaration, add:
+  channelColors: string[] = [];
+  channelWidths: number[] = [];
+
+  private readonly DEFAULT_WIDTH = 1.5;
+
   constructor(
     private el: ElementRef,
     private cdr: ChangeDetectorRef,
@@ -335,6 +424,7 @@ export class SignalGraphComponent implements OnChanges, OnDestroy, AfterViewInit
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['config'] && !changes['config'].firstChange) {
+      this.syncChannelStyles();
       this.render();
     }
   }
@@ -351,10 +441,25 @@ export class SignalGraphComponent implements OnChanges, OnDestroy, AfterViewInit
 
   // ── Bootstrap ────────────────────────────────────────────────────
   private boot(): void {
-    this._currentIndex    = this.config?.currentIndex    ?? 0;
+    this._currentIndex     = this.config?.currentIndex    ?? 0;
     this.timeWindowSeconds = this.config?.timeWindowSeconds ?? 2;
+    this.syncChannelStyles();
     this.startTimer();
     this.render();
+  }
+
+  private syncChannelStyles(): void {
+    const checked = this.getCheckedIndices();
+    // Grow arrays if new channels were added; preserve existing customizations
+    checked.forEach((chIdx, i) => {
+      if (this.channelColors[i] === undefined)
+        this.channelColors[i] = this.COLORS[chIdx % this.COLORS.length];
+      if (this.channelWidths[i] === undefined)
+        this.channelWidths[i] = this.DEFAULT_WIDTH;
+    });
+    // Trim to current length
+    this.channelColors.length = checked.length;
+    this.channelWidths.length = checked.length;
   }
 
   // ── Public render ────────────────────────────────────────────────
@@ -533,52 +638,108 @@ export class SignalGraphComponent implements OnChanges, OnDestroy, AfterViewInit
   }
 
   // ── Channel helpers ──────────────────────────────────────────────
-  private getCheckedIndices(): number[] {
+  getCheckedIndices(): number[] {
     return (this.config.selectedChannels ?? [])
       .map((sel, i) => sel ? i : -1)
       .filter(i => i !== -1);
   }
 
-  // ── Plot methods ─────────────────────────────────────────────────
-  private plotTimeDomain(): void {
-    const { signals, channels, fs, signalType } = this.config;
-    const checked = this.getCheckedIndices();
-    if (!checked.length) { Plotly.purge(this.graphId); return; }
+  setChannelColor(stackIdx: number, color: string): void {
+  this.channelColors[stackIdx] = color;
+  this.render();
+  } 
 
-    const tw         = this.timeWindow;
-    const visibleEnd = Math.min(this._currentIndex + tw, signals.length);
-    const SPACING    = 3;
-    const traces: any[] = [];
-
-    checked.forEach((chIdx, stackIdx) => {
-      const segment = signals.slice(this._currentIndex, visibleEnd).map(r => r[chIdx]);
-      const xTime   = segment.map((_, i) => (this._currentIndex + i) / fs);
-      const minVal  = Math.min(...segment);
-      const maxVal  = Math.max(...segment);
-      const range   = maxVal - minVal || 1;
-      const yData   = segment.map(v => ((v - minVal) / range) + stackIdx * SPACING);
-
-      traces.push({
-        x: xTime, y: yData,
-        type: 'scatter', mode: 'lines',
-        name: channels[chIdx],
-        line: { color: this.COLORS[chIdx % this.COLORS.length], width: 2 },
-        hovertemplate: `${channels[chIdx]}<br>${this.xAxisLabel}: %{x:.3f}<br>Value: %{y:.3f}<extra></extra>`
-      });
-    });
-
-    Plotly.react(this.graphId, traces, {
-      title: { text: `${signalType.toUpperCase()} Signal Viewer – ${checked.length} Channel(s)`, font: { size: 20, color: '#002b5c' } },
-      xaxis: { title: this.xAxisLabel, range: [this._currentIndex / fs, (visibleEnd - 1) / fs], gridcolor: '#e0e0e0' },
-      yaxis: { tickvals: checked.map((_, i) => i * SPACING + 0.5), showticklabels: true, gridcolor: '#f0f0f0' },
-      showlegend: true,
-      legend: { orientation: 'v', x: 1.02, y: 1, font: { size: 12 } },
-      height: 300 + (checked.length * 120),
-      margin: { l: 60, r: 150, t: 80, b: 60 },
-      plot_bgcolor: '#ffffff', paper_bgcolor: '#f8f9fa'
-    }, { responsive: true, displayModeBar: true, displaylogo: false });
+  setChannelWidth(stackIdx: number, width: number): void {
+    this.channelWidths[stackIdx] = width;
+    this.render();
   }
 
+  // ── Plot methods ─────────────────────────────────────────────────
+private plotTimeDomain(): void {
+  const { signals, channels, fs, signalType } = this.config;
+  const checked = this.getCheckedIndices();
+  if (!checked.length) { Plotly.purge(this.graphId); return; }
+
+  const tw         = this.timeWindow;
+  const visibleEnd = Math.min(this._currentIndex + tw, signals.length);
+
+  const hasDates = !!(this.config.dates?.length);
+
+  const xTime = hasDates
+    ? Array.from({ length: visibleEnd - this._currentIndex }, (_, i) => this.config.dates![this._currentIndex + i])
+    : Array.from({ length: visibleEnd - this._currentIndex }, (_, i) => (this._currentIndex + i) / fs);
+
+  const traces: any[]  = [];
+  const layout: any    = {
+    title: {
+      text: `${signalType.toUpperCase()} Signal Viewer – ${checked.length} Channel(s)`,
+      font: { size: 20, color: '#002b5c' }
+    },
+    grid: { rows: checked.length, columns: 1, pattern: 'independent', roworder: 'top to bottom' },
+    height: 220 + checked.length * 180,
+    margin: { l: 70, r: 150, t: 80, b: 60 },
+    showlegend: true,
+    legend: { orientation: 'v', x: 1.02, y: 1, font: { size: 12 } },
+    plot_bgcolor: '#ffffff',
+    paper_bgcolor: '#f8f9fa'
+  };
+
+  checked.forEach((chIdx, stackIdx) => {
+    const axisIndex  = stackIdx + 1;                         // 1-based
+    const xAxisKey   = axisIndex === 1 ? 'xaxis'  : `xaxis${axisIndex}`;
+    const yAxisKey   = axisIndex === 1 ? 'yaxis'  : `yaxis${axisIndex}`;
+    const xRef       = axisIndex === 1 ? 'x'      : `x${axisIndex}`;
+    const yRef       = axisIndex === 1 ? 'y'      : `y${axisIndex}`;
+
+    const segment    = signals.slice(this._currentIndex, visibleEnd).map(r => r[chIdx]);
+
+    // ── real y values, no normalization ──
+    const yMin       = Math.min(...segment);
+    const yMax       = Math.max(...segment);
+    const pad        = (yMax - yMin) * 0.1 || 0.5;   // 10% padding, or 0.5 if flat
+
+  traces.push({
+    x: xTime,
+    y: segment,
+    type: 'scatter',
+    mode: 'lines',
+    name: channels[chIdx],
+    xaxis: xRef,
+    yaxis: yRef,
+    line: {
+      color: this.channelColors[stackIdx] ?? this.COLORS[chIdx % this.COLORS.length],
+      width: this.channelWidths[stackIdx] ?? this.DEFAULT_WIDTH
+    },
+    hovertemplate:
+      `${channels[chIdx]}<br>${this.xAxisLabel}: %{x:.3f}<br>Value: %{y:.4f}<extra></extra>`
+  });
+
+  layout[xAxisKey] = {
+    title: stackIdx === checked.length - 1 ? this.xAxisLabel : '',
+    type: hasDates ? 'date' : 'linear',
+    range: hasDates
+      ? [this.config.dates![this._currentIndex], this.config.dates![visibleEnd - 1]]
+      : [this._currentIndex / fs, (visibleEnd - 1) / fs],
+    gridcolor: '#e0e0e0',
+    showticklabels: stackIdx === checked.length - 1
+  };
+
+    layout[yAxisKey] = {
+      title: { text: channels[chIdx], font: { size: 11 } },
+      range: [yMin - pad, yMax + pad],
+      gridcolor: '#f0f0f0',
+      zeroline: true,
+      zerolinecolor: '#cccccc'
+    };
+  });
+
+  Plotly.react(
+    this.graphId,
+    traces,
+    layout,
+    { responsive: true, displayModeBar: true, displaylogo: false }
+  );
+}
   private plotReoccurrenceMap(): void {
     const { signals, channels, reoccurrenceChX, reoccurrenceChY, reoccurrenceColorMap } = this.config;
     const visibleEnd = Math.min(this._currentIndex + this.timeWindow, signals.length);

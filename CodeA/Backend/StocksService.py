@@ -435,6 +435,15 @@ def clean_df(df):
         if col not in df.columns:
             df[col] = df["close"]
 
+    for possible in ["date", "datetime", "time", "timestamp"]:
+        if possible in df.columns:
+            df = df.rename(columns={possible: "date"})
+            df["date"] = pd.to_datetime(df["date"], errors="coerce")
+            break
+
+    if "date" in df.columns:
+        if df["date"].iloc[0] > df["date"].iloc[-1]:   # descending → reverse
+            df = df.iloc[::-1].reset_index(drop=True)
     # Strip commas from numbers like "1,234.56"
     for col in ["open", "high", "low", "close"]:
         df[col] = df[col].astype(str).str.replace(",", "", regex=False)
@@ -446,20 +455,33 @@ def clean_df(df):
 
 from pathlib import Path
 
-def PredictStockSignal(csv_path,):
+def PredictStockSignal(csv_path):
     df = clean_df(pd.read_csv(csv_path))
     n_days = len(df)
-    forecast = Forecast(csv_path, n_days=n_days+10)
-    
+    forecast = Forecast(csv_path, n_days=n_days + 10)
+
+    # Format dates as ISO strings for JSON serialization
+    if "date" in df.columns:
+        orig_dates = df["date"].dt.strftime("%Y-%m-%d").fillna("").tolist()
+    else:
+        orig_dates = list(range(len(df)))
+
+    if "date" in forecast.columns:
+        fore_dates = pd.to_datetime(forecast["date"]).dt.strftime("%Y-%m-%d").fillna("").tolist()
+    else:
+        fore_dates = list(range(len(forecast)))
+
     output = {
         "original": {
             "signals": df[["open", "high", "low", "close"]].values.tolist(),
             "channels": ["open", "high", "low", "close"],
+            "dates": orig_dates,
             "fs": 1
         },
         "forecast": {
             "signals": forecast[["open", "high", "low", "close"]].values.tolist(),
             "channels": ["open", "high", "low", "close"],
+            "dates": fore_dates,
             "fs": 1
         }
     }
@@ -471,14 +493,15 @@ def Forecast(csv_path, n_days=10, extra_forecast_multiplier=0.1):
     __main__.OHLCRidge = OHLCRidge
     with open("models.pkl", "rb") as f:
         models = pickle.load(f)
-    
+
     df = clean_df(pd.read_csv(csv_path))
     p = Path(csv_path)
     model = models[p.stem]
-    
+
     lookback = 31
     step = 5
     all_predictions = []
+    all_dates = []
 
     # Rolling predictions over the original signal
     for start in range(0, len(df) - lookback, step):
@@ -488,10 +511,29 @@ def Forecast(csv_path, n_days=10, extra_forecast_multiplier=0.1):
         pred = model.predict(window, n_days=step)
         all_predictions.append(pred)
 
+        # Generate dates for these predicted bars
+        if "date" in df.columns:
+            last_date = df.iloc[start + lookback - 1]["date"]
+            pred_dates = pd.date_range(start=last_date, periods=step + 1, freq="B")[1:]
+        else:
+            last_idx = start + lookback
+            pred_dates = pd.RangeIndex(start=last_idx, stop=last_idx + step)
+        all_dates.append(pd.Series(pred_dates))
+
     # Extra predictions beyond the original signal
-    # Use the last `lookback` rows of df as the seed window
     extra_days = int(len(df) * extra_forecast_multiplier)
     extra_pred = model.predict(df.tail(lookback), n_days=extra_days)
     all_predictions.append(extra_pred)
 
-    return pd.concat(all_predictions, ignore_index=True)
+    if "date" in df.columns:
+        last_date = df["date"].dropna().iloc[-1]
+        extra_dates = pd.date_range(start=last_date, periods=extra_days + 1, freq="B")[1:]
+    else:
+        last_idx = len(df)
+        extra_dates = pd.RangeIndex(start=last_idx, stop=last_idx + extra_days)
+    all_dates.append(pd.Series(extra_dates))
+
+    result = pd.concat(all_predictions, ignore_index=True)
+    result["date"] = pd.concat(all_dates, ignore_index=True).values
+
+    return result

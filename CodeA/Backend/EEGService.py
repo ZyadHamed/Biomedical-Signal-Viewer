@@ -289,7 +289,7 @@ def PredictEEGSignal(eeg_path: str, default_sfreq: float = 256.0) -> str:
 
     pred_idx    = probs.argmax().item()
     pred_label  = CATEGORIES[pred_idx]
-    confidence  = probs[pred_idx].item() * 100
+    confidence  = probs[pred_idx].item()
 
     result = pred_label.upper(), confidence
     return result
